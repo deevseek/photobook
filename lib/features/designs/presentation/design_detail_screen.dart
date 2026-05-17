@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
-import '../../../core/widgets/common_widgets.dart';
 import '../../../core/widgets/app_network_image.dart';
+import '../../../core/widgets/common_widgets.dart';
 import '../../../data/models/photobook_design_model.dart';
 import '../../../data/repositories/photobook_repository.dart';
 
@@ -19,14 +19,6 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
   final _repo = PhotobookRepository();
   late Future<PhotobookDesignModel> _future;
 
-  String _displayText(String? value, {String fallback = '-'}) {
-    if (value == null || value.trim().isEmpty) {
-      return fallback;
-    }
-
-    return value;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -34,6 +26,12 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
   }
 
   void _retry() => setState(() => _future = _repo.getDesignDetail(widget.designId));
+
+  String _layoutLabel(PhotobookDesignModel d) {
+    if (d.designSchemaSource == 'idml_package') return 'Layout dari Package';
+    if (d.designSchemaSource == 'idml') return 'Layout dari IDML';
+    return 'Layout default';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,45 +43,59 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
           if (snapshot.connectionState != ConnectionState.done) return const LoadingState();
           if (snapshot.hasError) return ErrorState(message: snapshot.error.toString(), onRetry: _retry);
           final d = snapshot.data!;
-          return ListView(padding: const EdgeInsets.all(16), children: [
-            SizedBox(
-              height: 220,
-              child: AppNetworkImage(
-                url: d.thumbnailUrl,
-                borderRadius: BorderRadius.circular(16),
+          final ready = d.schemaStatus == 'ready';
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              SizedBox(height: 220, child: AppNetworkImage(url: d.thumbnailUrl, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(height: 12),
+              Text(d.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+              Text('Kontributor: ${d.contributorName}'),
+              Text('Total halaman: ${d.totalPages}'),
+              Text('Harga desain: Rp ${d.designPrice}'),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                Chip(label: Text(d.idmlAvailable ? 'IDML tersedia' : 'IDML tidak tersedia')),
+                Chip(label: Text(d.designSchemaAvailable ? 'Schema tersedia' : 'Schema belum tersedia')),
+                Chip(label: Text(_layoutLabel(d))),
+                Chip(label: Text(d.previewStatus == 'ready' ? 'Preview PDF ready' : 'Preview PDF belum tersedia')),
+              ]),
+              if (!ready && d.designSchemaAvailable)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Text('Template belum siap. Tunggu sampai status schema ready.', style: TextStyle(color: Colors.orange)),
+                ),
+              const SizedBox(height: 14),
+              AppButton(
+                label: 'Gunakan Desain Ini',
+                onPressed: d.designSchemaAvailable
+                    ? () {
+                        if (!ready) {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Template belum siap'),
+                              content: const Text('Template belum siap. Tunggu sampai status schema ready.'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushNamed(context, AppRoutes.photobookEditor, arguments: {'productId': widget.productId, 'design': d});
+                                  },
+                                  child: const Text('Buka untuk debug'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.pushNamed(context, AppRoutes.photobookEditor, arguments: {'productId': widget.productId, 'design': d});
+                      }
+                    : null,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(d.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-            Text('Kontributor: ${d.contributorName}'),
-            Text(
-              '${_displayText(d.category)} • ${_displayText(d.theme)} • ${_displayText(d.size)}',
-            ),
-            Text('Total halaman: ${d.totalPages}'),
-            Text('Page size: ${_displayText(d.pageSize)}'),
-            Text('Harga desain: Rp ${d.designPrice}'),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, children: [
-              Chip(label: Text(d.idmlAvailable ? 'IDML tersedia' : 'IDML tidak tersedia')),
-              Chip(label: Text(d.designSchemaAvailable ? 'Schema tersedia' : 'Schema belum tersedia')),
-            ]),
-            const SizedBox(height: 8),
-            Text(
-              _displayText(
-                d.description,
-                fallback: 'Tidak ada deskripsi desain.',
-              ),
-            ),
-            if (!d.designSchemaAvailable) ...[
-              const SizedBox(height: 10),
-              const Text('Template belum memiliki schema editor. Desain ini belum bisa digunakan untuk editor PhotoBook.', style: TextStyle(color: Colors.orange)),
             ],
-            const SizedBox(height: 14),
-            AppButton(
-              label: 'Gunakan Desain Ini',
-              onPressed: d.designSchemaAvailable ? () => Navigator.pushNamed(context, AppRoutes.photobookEditor, arguments: {'productId': widget.productId, 'design': d}) : null,
-            ),
-          ]);
+          );
         },
       ),
     );
