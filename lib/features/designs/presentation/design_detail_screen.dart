@@ -8,7 +8,8 @@ import '../../../data/repositories/photobook_repository.dart';
 
 class DesignDetailScreen extends StatefulWidget {
   final int designId;
-  const DesignDetailScreen({super.key, required this.designId});
+  final int productId;
+  const DesignDetailScreen({super.key, required this.designId, required this.productId});
 
   @override
   State<DesignDetailScreen> createState() => _DesignDetailScreenState();
@@ -80,7 +81,7 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
             const SizedBox(height: 14),
             AppButton(
               label: 'Gunakan Desain Ini',
-              onPressed: d.designSchemaAvailable ? () => Navigator.pushNamed(context, AppRoutes.editorPlaceholder, arguments: d.title) : null,
+              onPressed: d.designSchemaAvailable ? () => Navigator.pushNamed(context, AppRoutes.photobookEditor, arguments: {'productId': widget.productId, 'design': d}) : null,
             ),
           ]);
         },
