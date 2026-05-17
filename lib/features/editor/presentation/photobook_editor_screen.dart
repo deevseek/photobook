@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/widgets/app_network_image.dart';
 import '../../../data/models/design_schema_model.dart';
 import '../../../data/models/photobook_design_model.dart';
+import '../../../data/models/photobook_order_model.dart';
 import '../../../data/repositories/photobook_repository.dart';
 
 class PhotobookEditorScreen extends StatefulWidget {
@@ -68,24 +69,31 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     if (schema == null) return const [];
     return schema.pages
         .expand((page) => page.frames)
-        .where((frame) => !selectedPhotoFilesByFrameId.containsKey(frame.id))
+        .where((frame) => !selectedPhotoBytesByFrameId.containsKey(frame.id))
         .toList();
   }
 
-  Map<String, dynamic> buildProjectJson() {
+  Map<String, dynamic> buildProjectJson(Map<String, UploadedProjectPhoto> uploadedPhotosByFrameId) {
     final schema = _schema!;
     return {
       'product_id': widget.productId,
       'design_id': widget.design.id,
       'design_schema_source': widget.design.designSchemaSource,
       'page_count': schema.pages.length,
+      'print_quantity': 1,
       'pages': schema.pages.map((page) => {
         'page_number': page.pageNumber,
-        'frames': page.frames.map((frame) => {
-          'frame_id': frame.id,
-          'photo_attached': selectedPhotoFilesByFrameId.containsKey(frame.id),
-          'photo_file_name': selectedPhotoFilesByFrameId[frame.id]?.name,
-          'crop': {'fit': 'cover', 'x': 0, 'y': 0, 'scale': 1, 'rotation': 0},
+        'background_url': page.backgroundUrl,
+        'frames': page.frames.map((frame) {
+          final uploaded = uploadedPhotosByFrameId[frame.id];
+          return {
+            'frame_id': frame.id,
+            'placeholder': frame.placeholder,
+            'photo_id': uploaded?.photoId,
+            'photo_url': uploaded?.fileUrl,
+            'fit': 'cover',
+            'crop': {'x': 0, 'y': 0, 'scale': 1, 'rotation': 0},
+          };
         }).toList(),
       }).toList(),
     };
@@ -103,42 +111,74 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Future<void> _onCheckoutPressed() async {
+    final schema = _schema;
+    if (schema == null) return;
     final missingFrames = _getMissingFrames();
-    if (missingFrames.isEmpty) {
+    if (missingFrames.isNotEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Siap lanjut checkout.')));
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Masih ada foto yang belum diisi'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...missingFrames.map((frame) => Text('- ${frame.placeholder}')),
+                const SizedBox(height: 8),
+                const Text('Lengkapi dulu sebelum checkout.'),
+              ],
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+        ),
+      );
       return;
     }
 
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Masih ada frame foto yang belum diisi.'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: missingFrames
-                .map((frame) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('• ${frame.placeholder} belum diisi'),
-                    ))
-                .toList(),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Lengkapi Foto')),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lanjut checkout meski foto belum lengkap.')));
-            },
-            child: const Text('Lanjutkan'),
-          ),
-        ],
-      ),
-    );
+    try {
+      setState(() => _loading = true);
+      final uploadedPhotosByFrameId = <String, UploadedProjectPhoto>{};
+      for (final page in schema.pages) {
+        for (final frame in page.frames) {
+          final bytes = selectedPhotoBytesByFrameId[frame.id]!;
+          final file = selectedPhotoFilesByFrameId[frame.id]!;
+          final uploaded = await _repo.uploadProjectPhoto(
+            designId: widget.design.id,
+            frameId: frame.id,
+            pageNumber: page.pageNumber,
+            bytes: bytes,
+            filename: file.name,
+          );
+          uploadedPhotosByFrameId[frame.id] = uploaded;
+        }
+      }
+
+      final order = await _repo.createOrder({
+        'product_id': widget.productId,
+        'contributor_design_id': widget.design.id,
+        'page_count': schema.pages.length,
+        'print_quantity': 1,
+        'shipping_address': 'Alamat customer',
+      });
+
+      final projectJson = buildProjectJson(uploadedPhotosByFrameId);
+      await _repo.saveProject(order.orderNumber, projectJson);
+
+      if (!mounted) return;
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => _CheckoutSummaryScreen(order: order, design: widget.design, schema: schema)));
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().toLowerCase().contains('socket') || e.toString().toLowerCase().contains('koneksi')
+          ? 'Koneksi gagal. Coba lagi.'
+          : e.toString().contains('upload')
+              ? 'Gagal upload foto'
+              : e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -256,7 +296,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(child: FilledButton(onPressed: _onCheckoutPressed, child: const Text('Lanjut Checkout'))),
+            Expanded(child: FilledButton(onPressed: _loading ? null : _onCheckoutPressed, child: _loading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Lanjut Checkout'))),
           ],
         ),
       ),
@@ -310,6 +350,35 @@ class PhotoFrameWidget extends StatelessWidget {
       width: frame.width * scaleX,
       height: frame.height * scaleY,
       child: frame.rotation == 0 ? content : Transform.rotate(angle: frame.rotation * math.pi / 180, child: content),
+    );
+  }
+}
+
+
+
+class _CheckoutSummaryScreen extends StatelessWidget {
+  final PhotobookOrderModel order;
+  final PhotobookDesignModel design;
+  final DesignSchemaModel schema;
+
+  const _CheckoutSummaryScreen({required this.order, required this.design, required this.schema});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Checkout Ringkasan')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Produk: ${order.productName}'),
+          Text('Desain: ${design.title}'),
+          Text('Jumlah halaman: ${schema.pages.length}'),
+          Text('Jumlah cetak: ${order.printQuantity}'),
+          Text('Subtotal: Rp ${order.totalAmount}'),
+          const SizedBox(height: 12),
+          const Text('Order berhasil dibuat dan project tersimpan.'),
+        ],
+      ),
     );
   }
 }
