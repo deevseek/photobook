@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
 import '../../orders/presentation/orders_screen.dart';
+import '../../products/presentation/product_list_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import 'home_screen.dart';
 
@@ -14,7 +15,7 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int index = 0;
-  final pages = const [HomeScreen(), Placeholder(), OrdersScreen(), ProfileScreen()];
+  final pages = const [HomeScreen(), ProductListScreen(), OrdersScreen(), ProfileScreen()];
 
   @override
   Widget build(BuildContext context) {
