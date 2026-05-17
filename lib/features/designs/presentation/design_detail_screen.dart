@@ -18,6 +18,14 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
   final _repo = PhotobookRepository();
   late Future<PhotobookDesignModel> _future;
 
+  String _displayText(String? value, {String fallback = '-'}) {
+    if (value == null || value.trim().isEmpty) {
+      return fallback;
+    }
+
+    return value;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -47,9 +55,11 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
             const SizedBox(height: 12),
             Text(d.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
             Text('Kontributor: ${d.contributorName}'),
-            Text('${d.category} • ${d.theme} • ${d.size}'),
+            Text(
+              '${_displayText(d.category)} • ${_displayText(d.theme)} • ${_displayText(d.size)}',
+            ),
             Text('Total halaman: ${d.totalPages}'),
-            Text('Page size: ${d.pageSize}'),
+            Text('Page size: ${_displayText(d.pageSize)}'),
             Text('Harga desain: Rp ${d.designPrice}'),
             const SizedBox(height: 8),
             Wrap(spacing: 8, children: [
@@ -57,7 +67,12 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
               Chip(label: Text(d.designSchemaAvailable ? 'Schema tersedia' : 'Schema belum tersedia')),
             ]),
             const SizedBox(height: 8),
-            Text(d.description),
+            Text(
+              _displayText(
+                d.description,
+                fallback: 'Tidak ada deskripsi desain.',
+              ),
+            ),
             if (!d.designSchemaAvailable) ...[
               const SizedBox(height: 10),
               const Text('Template belum memiliki schema editor. Desain ini belum bisa digunakan untuk editor PhotoBook.', style: TextStyle(color: Colors.orange)),
