@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
 import '../../../core/widgets/common_widgets.dart';
+import '../../../core/widgets/app_network_image.dart';
 import '../../../data/models/photobook_design_model.dart';
 import '../../../data/repositories/photobook_repository.dart';
 
@@ -68,7 +69,13 @@ class _DesignListScreenState extends State<DesignListScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(8),
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(12), child: NetworkImageFallback(imageUrl: d.thumbnailUrl, width: double.infinity))),
+                                Expanded(
+                                  child: AppNetworkImage(
+                                    url: d.thumbnailUrl,
+                                    width: double.infinity,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 Text(d.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
                                 Text(d.contributorName, maxLines: 1),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'app_network_image.dart';
 
 class AppButton extends StatelessWidget {
   final String label;
@@ -256,31 +257,12 @@ class _ImageBox extends StatelessWidget {
       return _ImageFallback(width: boxWidth, height: boxHeight);
     }
 
-    return ClipRRect(
+    return AppNetworkImage(
+      url: imageUrl,
+      width: boxWidth,
+      height: boxHeight,
+      fit: BoxFit.cover,
       borderRadius: BorderRadius.circular(14),
-      child: Image.network(
-        imageUrl!,
-        width: boxWidth,
-        height: boxHeight,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-
-          return Container(
-            width: boxWidth,
-            height: boxHeight,
-            color: AppColors.lightGrey,
-            child: const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint('IMAGE LOAD ERROR: $imageUrl');
-          debugPrint('ERROR: $error');
-          return _ImageFallback(width: boxWidth, height: boxHeight);
-        },
-      ),
     );
   }
 }
@@ -399,27 +381,12 @@ class NetworkImageFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
     if (!hasImage) return _fallback();
-    return Image.network(
-      imageUrl!,
+    return AppNetworkImage(
+      url: imageUrl,
       width: width,
       height: height,
       fit: fit,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          width: width,
-          height: height,
-          color: AppColors.softGray,
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        );
-      },
-      errorBuilder: (_, error, ___) {
-        debugPrint('IMAGE LOAD ERROR: $imageUrl');
-        debugPrint('ERROR: $error');
-        return _fallback();
-      },
+      borderRadius: BorderRadius.zero,
     );
   }
 

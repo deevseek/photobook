@@ -21,7 +21,7 @@ class PhotobookDesignModel {
       productId: (json['product_id'] as num?)?.toInt(),
       name: (json['name'] ?? json['title'] ?? '-').toString(),
       description: json['description']?.toString(),
-      thumbnailUrl: normalizeImageUrl((json['thumbnail_url'] ?? '').toString()) ?? '',
+      thumbnailUrl: normalizeFileUrl((json['thumbnail_url'] ?? '').toString()) ?? '',
     );
   }
 }

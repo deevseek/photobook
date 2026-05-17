@@ -24,7 +24,7 @@ class PhotobookProductModel {
       description: json['description']?.toString(),
       coverType: (json['cover_type'] ?? json['subtitle'])?.toString(),
       price: num.tryParse('${json['price'] ?? 0}') ?? 0,
-      imageUrl: normalizeImageUrl((json['image_url'] ?? json['thumbnail_url'])?.toString()),
+      imageUrl: normalizeFileUrl((json['image_url'] ?? json['thumbnail_url'])?.toString()),
     );
   }
 }
