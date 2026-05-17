@@ -58,7 +58,7 @@ class _DesignListScreenState extends State<DesignListScreen> {
               mainAxisSpacing: 12,
             ),
             itemCount: items.length,
-            itemBuilder: (_, i) => _DesignCard(design: items[i]),
+            itemBuilder: (_, i) => _DesignCard(design: items[i], productId: widget.productId),
           );
         },
       ),
@@ -67,9 +67,10 @@ class _DesignListScreenState extends State<DesignListScreen> {
 }
 
 class _DesignCard extends StatelessWidget {
-  const _DesignCard({required this.design});
+  const _DesignCard({required this.design, required this.productId});
 
   final PhotobookDesignModel design;
+  final int productId;
 
   Future<void> _handleTap(BuildContext context) async {
     if (!design.designSchemaAvailable) {
@@ -91,7 +92,7 @@ class _DesignCard extends StatelessWidget {
       return;
     }
 
-    Navigator.pushNamed(context, AppRoutes.designDetail, arguments: design.id);
+    Navigator.pushNamed(context, AppRoutes.designDetail, arguments: {'designId': design.id, 'productId': productId});
   }
 
   @override

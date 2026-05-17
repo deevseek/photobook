@@ -1,4 +1,5 @@
 import '../../core/utils/url_normalizer.dart';
+import 'design_schema_model.dart';
 
 class PhotobookDesignModel {
   final int id;
@@ -15,6 +16,7 @@ class PhotobookDesignModel {
   final bool designSchemaAvailable;
   final String? description;
   final dynamic designSchema;
+  final DesignSchemaModel? parsedDesignSchema;
 
   const PhotobookDesignModel({
     required this.id,
@@ -31,6 +33,7 @@ class PhotobookDesignModel {
     required this.designSchemaAvailable,
     required this.description,
     required this.designSchema,
+    required this.parsedDesignSchema,
   });
 
   factory PhotobookDesignModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +52,9 @@ class PhotobookDesignModel {
       designSchemaAvailable: json['design_schema_available'] == true || json['design_schema_available'] == 1,
       description: json['description']?.toString(),
       designSchema: json['design_schema'],
+      parsedDesignSchema: json['design_schema'] is Map<String, dynamic>
+          ? DesignSchemaModel.fromJson(json['design_schema'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
