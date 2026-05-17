@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
 import '../../../core/widgets/common_widgets.dart';
+import '../../../core/widgets/app_network_image.dart';
 import '../../../data/models/photobook_design_model.dart';
 import '../../../data/repositories/photobook_repository.dart';
 
@@ -36,7 +37,13 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
           if (snapshot.hasError) return ErrorState(message: snapshot.error.toString(), onRetry: _retry);
           final d = snapshot.data!;
           return ListView(padding: const EdgeInsets.all(16), children: [
-            ClipRRect(borderRadius: BorderRadius.circular(16), child: SizedBox(height: 220, child: NetworkImageFallback(imageUrl: d.thumbnailUrl))),
+            SizedBox(
+              height: 220,
+              child: AppNetworkImage(
+                url: d.thumbnailUrl,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
             const SizedBox(height: 12),
             Text(d.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
             Text('Kontributor: ${d.contributorName}'),

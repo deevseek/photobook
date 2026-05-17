@@ -42,7 +42,7 @@ class PhotobookDesignModel {
       size: (json['size'] ?? '-').toString(),
       totalPages: (json['total_pages'] as num?)?.toInt() ?? 0,
       pageSize: (json['page_size'] ?? '-').toString(),
-      thumbnailUrl: normalizeImageUrl(json['thumbnail_url']?.toString()),
+      thumbnailUrl: normalizeFileUrl(json['thumbnail_url']?.toString()),
       contributorName: (json['contributor_name'] ?? '-').toString(),
       designPrice: (json['design_price'] as num?)?.toInt() ?? 0,
       idmlAvailable: json['idml_available'] == true || json['idml_available'] == 1,

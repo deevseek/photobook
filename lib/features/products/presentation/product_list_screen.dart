@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
 import '../../../core/widgets/common_widgets.dart';
+import '../../../core/widgets/app_network_image.dart';
 import '../../../data/models/photobook_product_model.dart';
 import '../../../data/repositories/photobook_repository.dart';
 
@@ -46,7 +47,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    ClipRRect(borderRadius: BorderRadius.circular(12), child: SizedBox(height: 160, width: double.infinity, child: NetworkImageFallback(imageUrl: p.imageUrl))),
+                    SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: AppNetworkImage(
+                        url: p.imageUrl,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                     Text('${p.category} • ${p.size}'),
