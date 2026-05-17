@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
@@ -57,7 +58,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             const SizedBox(height: 12),
             Text(p.description),
             const SizedBox(height: 14),
-            AppButton(label: 'Lihat Desain', onPressed: () => Navigator.pushNamed(context, AppRoutes.designs, arguments: p.id)),
+            AppButton(
+              label: 'Lihat Desain',
+              onPressed: () {
+                debugPrint('OPEN DESIGN LIST FOR PRODUCT ID: ${p.id}');
+                Navigator.pushNamed(context, AppRoutes.designs, arguments: p.id);
+              },
+            ),
           ]);
         },
       ),
