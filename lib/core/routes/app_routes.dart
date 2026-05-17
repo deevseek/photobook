@@ -11,4 +11,6 @@ class AppRoutes {
   static const checkoutPlaceholder = '/checkout';
   static const orders = '/orders';
   static const profile = '/profile';
+  static const orderDetail = '/orders/detail';
+  static const orderTracking = '/orders/tracking';
 }

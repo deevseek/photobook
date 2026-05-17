@@ -1,0 +1,5 @@
+class PriceCalculationModel {
+  final int basePrice, defaultPages, additionalPages, additionalPagePrice, additionalPageTotal, designPrice, subtotalPrint, totalBeforeShipping;
+  PriceCalculationModel({required this.basePrice,required this.defaultPages,required this.additionalPages,required this.additionalPagePrice,required this.additionalPageTotal,required this.designPrice,required this.subtotalPrint,required this.totalBeforeShipping});
+  factory PriceCalculationModel.fromJson(Map<String,dynamic> j)=>PriceCalculationModel(basePrice:(j['base_price'] as num?)?.toInt()??0,defaultPages:(j['default_pages'] as num?)?.toInt()??0,additionalPages:(j['additional_pages'] as num?)?.toInt()??0,additionalPagePrice:(j['additional_page_price'] as num?)?.toInt()??0,additionalPageTotal:(j['additional_page_total'] as num?)?.toInt()??0,designPrice:(j['design_price'] as num?)?.toInt()??0,subtotalPrint:(j['subtotal_print'] as num?)?.toInt()??0,totalBeforeShipping:(j['total_before_shipping'] as num?)?.toInt()??0);
+}

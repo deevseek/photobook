@@ -1,100 +1,77 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 import '../config/api_config.dart';
-
-class ApiException implements Exception {
-  final String message;
-  final int? statusCode;
-
-  const ApiException(this.message, {this.statusCode});
-
-  @override
-  String toString() => message;
-}
+import '../errors/api_exception.dart';
+import '../storage/token_storage.dart';
 
 class ApiClient {
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
-
-  final http.Client _client;
-
-  Future<dynamic> get(String path, {Map<String, String>? headers}) async {
-    final uri = _buildUri(path);
-    return _send(() => _client.get(uri, headers: headers));
-  }
-
-  Future<dynamic> post(
-    String path, {
-    Map<String, String>? headers,
-    Object? body,
-  }) async {
-    final uri = _buildUri(path);
-    final resolvedHeaders = <String, String>{
-      'Content-Type': 'application/json',
-      ...?headers,
-    };
-
-    return _send(
-      () => _client.post(
-        uri,
-        headers: resolvedHeaders,
-        body: body == null ? null : jsonEncode(body),
-      ),
+  ApiClient({Dio? dio, TokenStorage? tokenStorage})
+    : _tokenStorage = tokenStorage ?? TokenStorage(),
+      _dio = dio ?? Dio() {
+    _dio.options = BaseOptions(
+      baseUrl: ApiConfig.baseUrl,
+      connectTimeout: const Duration(seconds: ApiConfig.timeoutSeconds),
+      receiveTimeout: const Duration(seconds: ApiConfig.timeoutSeconds),
+      headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
     );
   }
 
-  Uri _buildUri(String path) {
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('${ApiConfig.baseUrl}$normalizedPath');
+  final Dio _dio;
+  final TokenStorage _tokenStorage;
+
+  Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    final response = await _request(() => _dio.get(path, queryParameters: queryParameters));
+    return _parseBody(response);
   }
 
-  Future<dynamic> _send(Future<http.Response> Function() request) async {
+  Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
+    final response = await _request(() => _dio.post(path, data: body ?? {}));
+    return _parseBody(response);
+  }
+
+  Future<dynamic> postMultipart(String path, {required FormData formData, ProgressCallback? onSendProgress}) async {
+    final response = await _request(() => _dio.post(path, data: formData, onSendProgress: onSendProgress));
+    return _parseBody(response);
+  }
+
+  Future<Response<dynamic>> _request(Future<Response<dynamic>> Function() fn) async {
     try {
-      final response = await request().timeout(ApiConfig.receiveTimeout);
-      return _parseResponse(response);
-    } on TimeoutException {
-      throw const ApiException('Koneksi terlalu lama. Coba lagi.');
-    } on SocketException {
-      throw const ApiException('Tidak dapat terhubung ke server. Cek koneksi internet Anda.');
-    } on http.ClientException {
-      throw const ApiException('Gagal menghubungi server. Silakan coba lagi.');
+      final token = await _tokenStorage.getToken();
+      _dio.options.headers['Authorization'] = token == null || token.isEmpty ? null : 'Bearer $token';
+      return await fn();
+    } on DioException catch (e) {
+      throw _mapDioError(e);
     }
   }
 
-  dynamic _parseResponse(http.Response response) {
-    final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
-
-    if (response.statusCode == 401) {
-      throw const ApiException('Sesi Anda berakhir. Silakan login kembali.', statusCode: 401);
-    }
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = _extractMessage(decoded, fallback: 'Request gagal (${response.statusCode}).');
-      throw ApiException(message, statusCode: response.statusCode);
-    }
-
-    if (decoded is! Map<String, dynamic>) {
-      throw const ApiException('Format response server tidak valid.');
-    }
-
-    final success = decoded['success'] == true;
-    if (!success) {
-      throw ApiException(_extractMessage(decoded, fallback: 'Terjadi kesalahan pada server.'));
-    }
-
-    return decoded['data'];
+  dynamic _parseBody(Response<dynamic> response) {
+    final body = response.data;
+    if (body is! Map<String, dynamic>) throw const ApiException('Format response server tidak valid.');
+    if (body['success'] != true) throw ApiException((body['message'] ?? 'Request gagal').toString());
+    return body['data'];
   }
 
-  String _extractMessage(dynamic decoded, {required String fallback}) {
-    if (decoded is Map<String, dynamic>) {
-      final message = decoded['message']?.toString();
-      if (message != null && message.trim().isNotEmpty) {
-        return message;
+  ApiException _mapDioError(DioException e) {
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+    if (status == 422 && data is Map<String, dynamic>) {
+      final errors = data['errors'];
+      if (errors is Map<String, dynamic> && errors.isNotEmpty) {
+        final first = errors.values.first;
+        if (first is List && first.isNotEmpty) return ApiException(first.first.toString(), statusCode: 422);
       }
+      return ApiException((data['message'] ?? 'Validasi gagal').toString(), statusCode: 422);
     }
+    if ([401, 403, 404, 500].contains(status)) return ApiException(_extractMessage(data, fallback: 'Request gagal ($status)'), statusCode: status);
+    if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) return const ApiException('Koneksi timeout. Coba lagi.');
+    if (e.error is SocketException) return const ApiException('Tidak dapat terhubung ke server.');
+    return ApiException(_extractMessage(data, fallback: e.message ?? 'Terjadi kesalahan.'));
+  }
+
+  String _extractMessage(dynamic data, {required String fallback}) {
+    if (data is Map<String, dynamic> && data['message'] != null) return data['message'].toString();
     return fallback;
   }
 }

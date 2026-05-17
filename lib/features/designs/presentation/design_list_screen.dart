@@ -21,7 +21,7 @@ class _DesignListScreenState extends State<DesignListScreen> {
   @override
   void initState() {
     super.initState();
-    _future = _repo.getDesignsByProduct(widget.productId);
+    _future = _repo.getProductDesigns(widget.productId);
   }
 
   @override
@@ -30,7 +30,7 @@ class _DesignListScreenState extends State<DesignListScreen> {
     super.dispose();
   }
 
-  void _retry() => setState(() => _future = _repo.getDesignsByProduct(widget.productId));
+  void _retry() => setState(() => _future = _repo.getProductDesigns(widget.productId));
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +45,7 @@ class _DesignListScreenState extends State<DesignListScreen> {
           if (allItems.isEmpty) return const EmptyState(title: 'Desain kosong', subtitle: 'Belum ada desain untuk produk ini.');
           return StatefulBuilder(builder: (context, setInnerState) {
             final q = _searchCtrl.text.toLowerCase();
-            final items = allItems.where((d) => d.title.toLowerCase().contains(q) || d.theme.toLowerCase().contains(q) || d.category.toLowerCase().contains(q)).toList();
+            final items = allItems.where((d) => d.title.toLowerCase().contains(q) || d.theme.toLowerCase().contains(q) || d.category.toLowerCase().contains(q) || d.contributorName.toLowerCase().contains(q)).toList();
             return Column(children: [
               Padding(
                 padding: const EdgeInsets.all(16),

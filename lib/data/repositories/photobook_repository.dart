@@ -1,37 +1,35 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import '../../core/config/api_config.dart';
+import '../../core/errors/api_exception.dart';
 import '../../core/services/api_client.dart';
+import '../models/payment_response_model.dart';
 import '../models/photobook_design_model.dart';
+import '../models/photobook_order_model.dart';
 import '../models/photobook_product_model.dart';
+import '../models/price_calculation_model.dart';
+import '../models/shipping_rate_model.dart';
+import '../models/tracking_model.dart';
 
 class PhotobookRepository {
   PhotobookRepository({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
-
-  final ApiClient _apiClient;
-
-  Future<List<PhotobookProductModel>> getProducts() async {
-    final data = await _apiClient.get('/photobook/products');
-    final list = (data is List ? data : <dynamic>[]).whereType<Map<String, dynamic>>().toList();
-    return list.map(PhotobookProductModel.fromJson).toList();
-  }
-
-  Future<PhotobookProductModel> getProductDetail(int id) async {
-    final data = await _apiClient.get('/photobook/products/$id');
-    if (data is! Map<String, dynamic>) {
-      throw const ApiException('Data detail produk tidak valid.');
-    }
-    return PhotobookProductModel.fromJson(data);
-  }
-
-  Future<List<PhotobookDesignModel>> getDesignsByProduct(int productId) async {
-    final data = await _apiClient.get('/photobook/products/$productId/designs');
-    final list = (data is List ? data : <dynamic>[]).whereType<Map<String, dynamic>>().toList();
-    return list.map(PhotobookDesignModel.fromJson).toList();
-  }
-
-  Future<PhotobookDesignModel> getDesignDetail(int id) async {
-    final data = await _apiClient.get('/photobook/designs/$id');
-    if (data is! Map<String, dynamic>) {
-      throw const ApiException('Data detail desain tidak valid.');
-    }
-    return PhotobookDesignModel.fromJson(data);
-  }
+  final ApiClient _apiClient; String get _p=>ApiConfig.photobookPrefix;
+  Future<List<PhotobookProductModel>> getProducts() async => _toList(await _apiClient.get('$_p/products')).map(PhotobookProductModel.fromJson).toList();
+  Future<PhotobookProductModel> getProductDetail(int id) async => PhotobookProductModel.fromJson(_toMap(await _apiClient.get('$_p/products/$id')));
+  Future<List<PhotobookDesignModel>> getProductDesigns(int productId) async => _toList(await _apiClient.get('$_p/products/$productId/designs')).map(PhotobookDesignModel.fromJson).toList();
+  Future<List<PhotobookDesignModel>> getDesigns() async => _toList(await _apiClient.get('$_p/designs')).map(PhotobookDesignModel.fromJson).toList();
+  Future<PhotobookDesignModel> getDesignDetail(int id) async => PhotobookDesignModel.fromJson(_toMap(await _apiClient.get('$_p/designs/$id')));
+  Future<String?> downloadIdml(int id) async => _toMap(await _apiClient.get('$_p/designs/$id/download-idml'))['download_url']?.toString();
+  Future<PriceCalculationModel> calculatePrice({required int productId,int? contributorDesignId,required int pageCount,required int printQuantity}) async => PriceCalculationModel.fromJson(_toMap(await _apiClient.post('$_p/calculate-price',body:{'product_id':productId,'contributor_design_id':contributorDesignId,'page_count':pageCount,'print_quantity':printQuantity} )));
+  Future<PhotobookOrderModel> createOrder(Map<String,dynamic> body) async => PhotobookOrderModel.fromJson(_toMap(await _apiClient.post('$_p/orders',body: body)));
+  Future<List<PhotobookOrderModel>> getOrders() async => _toList(await _apiClient.get('$_p/orders')).map(PhotobookOrderModel.fromJson).toList();
+  Future<PhotobookOrderModel> getOrderDetail(String n) async => PhotobookOrderModel.fromJson(_toMap(await _apiClient.get('$_p/orders/$n')));
+  Future<void> saveProject(String n, Map<String,dynamic> pj) async => _apiClient.post('$_p/orders/$n/save-project', body: {'project_json': pj});
+  Future<void> uploadFinalPdf(String n, File finalPdf, Map<String,dynamic> pj, int pageCount,{ProgressCallback? onSendProgress}) async {final f=FormData.fromMap({'final_pdf':await MultipartFile.fromFile(finalPdf.path,filename:'final.pdf'),'project_json':pj,'page_count':pageCount}); await _apiClient.postMultipart('$_p/orders/$n/upload-final-pdf', formData:f,onSendProgress:onSendProgress);}
+  Future<Map<String,dynamic>> getPrintFile(String n) async => _toMap(await _apiClient.get('$_p/orders/$n/print-file'));
+  Future<TrackingModel> getTracking(String n) async => TrackingModel.fromJson(await _apiClient.get('$_p/orders/$n/tracking'));
+  Future<List<ShippingRateModel>> getShippingRates(Map<String,dynamic> body) async => _toList(await _apiClient.post('$_p/shipping/rates',body:body)).map(ShippingRateModel.fromJson).toList();
+  Future<PaymentResponseModel> createPayment(String n) async => PaymentResponseModel.fromJson(_toMap(await _apiClient.post('$_p/payment/create', body: {'order_number':n})));
+  Map<String,dynamic> _toMap(dynamic d){if(d is Map<String,dynamic>)return d; throw const ApiException('Format data tidak valid.');}
+  List<Map<String,dynamic>> _toList(dynamic d)=> (d is List?d:<dynamic>[]).whereType<Map<String,dynamic>>().toList();
 }

@@ -7,7 +7,9 @@ import '../../features/designs/presentation/design_list_screen.dart';
 import '../../features/editor/presentation/editor_placeholder_screen.dart';
 import '../../features/home/presentation/main_shell_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/orders/presentation/orders_screen.dart';
+import '../../features/orders/presentation/tracking_screen.dart';
 import '../../features/products/presentation/product_detail_screen.dart';
 import '../../features/products/presentation/product_list_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -48,6 +50,14 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => const OrdersScreen());
       case AppRoutes.profile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
+      case AppRoutes.orderDetail:
+        final n = settings.arguments as String?;
+        if (n == null) return _fallbackRoute();
+        return MaterialPageRoute(builder: (_) => OrderDetailScreen(orderNumber: n));
+      case AppRoutes.orderTracking:
+        final n = settings.arguments as String?;
+        if (n == null) return _fallbackRoute();
+        return MaterialPageRoute(builder: (_) => TrackingScreen(orderNumber: n));
       default:
         return _fallbackRoute();
     }
