@@ -45,13 +45,16 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 16),
         const SectionHeader(title: 'Produk PhotoBook'),
         const SizedBox(height: 8),
-        ...p.products.take(3).map((product) => ProductCard(
-              title: product.name,
-              subtitle: '${product.category} • ${product.size}',
-              price: product.basePrice,
-              imageUrl: product.imageUrl,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product.id),
-            )),
+        ...p.products.take(3).map((product) {
+          debugPrint('PRODUCT IMAGE URL: ${product.imageUrl}');
+          return ProductCard(
+            title: product.name,
+            subtitle: '${product.category} • ${product.size}',
+            price: product.basePrice,
+            imageUrl: product.imageUrl,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product.id),
+          );
+        }),
       ]);
     });
   }

@@ -1,3 +1,5 @@
+import '../../core/utils/url_normalizer.dart';
+
 class PhotobookProductModel {
   final int id;
   final String name;
@@ -43,7 +45,7 @@ class PhotobookProductModel {
       coverType: json['cover_type']?.toString() ?? '',
       paperType: json['paper_type']?.toString() ?? '',
       productionEstimateDays: int.tryParse('${json['production_estimate_days'] ?? 0}') ?? 0,
-      imageUrl: json['image_url']?.toString(),
+      imageUrl: normalizeImageUrl(json['image_url']?.toString()),
       activeDesignsCount: int.tryParse('${json['active_designs_count'] ?? 0}') ?? 0,
       isActive: json['is_active'] == true || json['is_active'] == 1,
       description: json['description']?.toString() ?? '',
