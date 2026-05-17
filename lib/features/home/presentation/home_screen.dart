@@ -1,26 +1,50 @@
 import 'package:flutter/material.dart';
-import '../../../core/routes/app_routes.dart';
-import '../../../core/widgets/common_widgets.dart';
+import 'package:provider/provider.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../../../core/routes/app_routes.dart';
+import '../../../core/state/view_state.dart';
+import '../../../core/widgets/common_widgets.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../products/providers/product_provider.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => context.read<ProductProvider>().fetchProducts());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Halo, Customer 👋', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 16),
-      const SectionHeader(title: 'Produk PhotoBook'),
-      const SizedBox(height: 8),
-      ProductCard(title: 'A4 Landscape', subtitle: 'Hardcover 20 halaman', price: 189000, onTap: ()=>Navigator.pushNamed(context, AppRoutes.productDetail)),
-      const SizedBox(height: 16),
-      SectionHeader(title: 'Desain Populer', actionText: 'Lihat semua', onTap: ()=>Navigator.pushNamed(context, AppRoutes.designs)),
-      DesignCard(
-        name: 'Minimal White',
-        thumbnailUrl: 'https://picsum.photos/400/500?random=1',
-        onTap: ()=>Navigator.pushNamed(context, AppRoutes.designDetail),
-      ),
-      const SizedBox(height: 8),
-      const Text('TODO: Integrasi API produk/desain beranda')
-    ]);
+    final auth = context.watch<AuthProvider>();
+    return Consumer<ProductProvider>(builder: (_, p, __) {
+      if (p.status == ViewStatus.loading) return const LoadingState();
+      if (p.status == ViewStatus.error) return ErrorState(message: p.error ?? 'Gagal memuat produk.', onRetry: p.fetchProducts);
+      if (p.status == ViewStatus.empty) return const EmptyState(title: 'Produk kosong', subtitle: 'Belum ada produk PhotoBook tersedia.');
+      return ListView(padding: const EdgeInsets.all(16), children: [
+        Text('Halo, ${auth.user?.name ?? 'Customer'} 👋', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+        if (auth.user == null) ...[
+          const SizedBox(height: 8),
+          AppButton(label: 'Login untuk melanjutkan', onPressed: () => Navigator.pushNamed(context, AppRoutes.login)),
+        ],
+        const SizedBox(height: 16),
+        const SectionHeader(title: 'Produk PhotoBook'),
+        const SizedBox(height: 8),
+        ...p.products.take(3).map((product) => ProductCard(
+              title: product.name,
+              subtitle: '${product.category} • ${product.size}',
+              price: product.basePrice,
+              imageUrl: product.imageUrl,
+              onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product.id),
+            )),
+      ]);
+    });
   }
 }

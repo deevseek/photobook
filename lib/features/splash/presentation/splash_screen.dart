@@ -1,10 +1,34 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget { const SplashScreen({super.key}); @override State<SplashScreen> createState() => _SplashScreenState(); }
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
 class _SplashScreenState extends State<SplashScreen> {
-  @override void initState() { super.initState(); Timer(const Duration(seconds: 2), ()=>Navigator.pushReplacementNamed(context, AppRoutes.onboarding)); }
-  @override Widget build(BuildContext context) => const Scaffold(body: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.navy, AppColors.electricBlue])), child: Center(child: Text('PhotoBook', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)))));
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      await auth.bootstrap();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, auth.user != null ? AppRoutes.home : AppRoutes.login);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: DecoratedBox(
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.navy, AppColors.electricBlue])),
+      child: Center(child: CircularProgressIndicator(color: Colors.white)),
+    ),
+  );
 }
