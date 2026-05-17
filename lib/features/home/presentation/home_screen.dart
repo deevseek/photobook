@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/widgets/common_widgets.dart';
@@ -29,6 +30,13 @@ class _HomeScreenState extends State<HomeScreen> {
       if (p.status == ViewStatus.error) return ErrorState(message: p.error ?? 'Gagal memuat produk.', onRetry: p.fetchProducts);
       if (p.status == ViewStatus.empty) return const EmptyState(title: 'Produk kosong', subtitle: 'Belum ada produk PhotoBook tersedia.');
       return ListView(padding: const EdgeInsets.all(16), children: [
+        if (AppConfig.devBypassLogin)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
+            child: const Text('Mode Testing Aktif - Login Gmail dilewati sementara', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
         Text('Halo, ${auth.user?.name ?? 'Customer'} 👋', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
         if (auth.user == null) ...[
           const SizedBox(height: 8),
