@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../config/api_config.dart';
+import '../config/app_config.dart';
 import '../errors/api_exception.dart';
 import '../storage/token_storage.dart';
 
 class ApiClient {
   ApiClient({Dio? dio, TokenStorage? tokenStorage})
-    : _tokenStorage = tokenStorage ?? TokenStorage(),
-      _dio = dio ?? Dio() {
+      : _tokenStorage = tokenStorage ?? TokenStorage(),
+        _dio = dio ?? Dio() {
     _dio.options = BaseOptions(
       baseUrl: ApiConfig.baseUrl,
       connectTimeout: const Duration(seconds: ApiConfig.timeoutSeconds),
@@ -38,8 +39,16 @@ class ApiClient {
 
   Future<Response<dynamic>> _request(Future<Response<dynamic>> Function() fn) async {
     try {
-      final token = await _tokenStorage.getToken();
-      _dio.options.headers['Authorization'] = token == null || token.isEmpty ? null : 'Bearer $token';
+      final storedToken = (await _tokenStorage.getToken())?.trim() ?? '';
+      final fallbackDevToken = AppConfig.devBypassLogin ? AppConfig.devCustomerToken.trim() : '';
+      final effectiveToken = storedToken.isNotEmpty ? storedToken : fallbackDevToken;
+
+      if (effectiveToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $effectiveToken';
+      } else {
+        _dio.options.headers.remove('Authorization');
+      }
+
       return await fn();
     } on DioException catch (e) {
       throw _mapDioError(e);
