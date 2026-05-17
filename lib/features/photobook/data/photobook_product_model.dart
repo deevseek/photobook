@@ -3,7 +3,7 @@ class PhotobookProductModel {
   final String name;
   final String? description;
   final String? coverType;
-  final int price;
+  final num price;
   final String? imageUrl;
 
   const PhotobookProductModel({
@@ -21,7 +21,7 @@ class PhotobookProductModel {
       name: (json['name'] ?? json['title'] ?? '-').toString(),
       description: json['description']?.toString(),
       coverType: (json['cover_type'] ?? json['subtitle'])?.toString(),
-      price: (json['price'] as num?)?.toInt() ?? 0,
+      price: num.tryParse('${json['price'] ?? 0}') ?? 0,
       imageUrl: (json['image_url'] ?? json['thumbnail_url'])?.toString(),
     );
   }

@@ -66,7 +66,7 @@ class SectionHeader extends StatelessWidget {
 class ProductCard extends StatelessWidget {
   final String title;
   final String subtitle;
-  final int price;
+  final num price;
   final String? imageUrl;
   final VoidCallback? onTap;
 
@@ -114,8 +114,8 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Mulai Rp ${price.toString()}',
+                    PriceText(
+                      price: price,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
@@ -327,16 +327,43 @@ class StatusBadge extends StatelessWidget {
 }
 
 class PriceText extends StatelessWidget {
-  final int price;
+  final num price;
+  final TextStyle? style;
 
-  const PriceText({super.key, required this.price});
+  const PriceText({
+    super.key,
+    required this.price,
+    this.style,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final value = price.round();
+
     return Text(
-      'Rp $price',
-      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy),
+      'Rp ${_formatRupiah(value)}',
+      style: style ??
+          const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
     );
+  }
+
+  String _formatRupiah(int value) {
+    final text = value.toString();
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < text.length; i++) {
+      final reverseIndex = text.length - i;
+      buffer.write(text[i]);
+
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+
+    return buffer.toString();
   }
 }
 
