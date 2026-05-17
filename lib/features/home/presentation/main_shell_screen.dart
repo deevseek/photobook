@@ -22,8 +22,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return Scaffold(
       body: pages[index],
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.editorPlaceholder),
-        label: const Text('Buat PhotoBook'),
+        onPressed: () => Navigator.pushNamed(context, AppRoutes.products),
+        label: const Text('Pilih Produk Dulu'),
         icon: const Icon(Icons.auto_awesome),
       ),
       bottomNavigationBar: NavigationBar(
