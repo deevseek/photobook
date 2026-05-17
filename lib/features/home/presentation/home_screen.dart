@@ -14,7 +14,11 @@ class HomeScreen extends StatelessWidget {
       ProductCard(title: 'A4 Landscape', subtitle: 'Hardcover 20 halaman', price: 189000, onTap: ()=>Navigator.pushNamed(context, AppRoutes.productDetail)),
       const SizedBox(height: 16),
       SectionHeader(title: 'Desain Populer', actionText: 'Lihat semua', onTap: ()=>Navigator.pushNamed(context, AppRoutes.designs)),
-      DesignCard(name: 'Minimal White', onTap: ()=>Navigator.pushNamed(context, AppRoutes.designDetail)),
+      DesignCard(
+        name: 'Minimal White',
+        thumbnailUrl: 'https://picsum.photos/400/500?random=1',
+        onTap: ()=>Navigator.pushNamed(context, AppRoutes.designDetail),
+      ),
       const SizedBox(height: 8),
       const Text('TODO: Integrasi API produk/desain beranda')
     ]);
