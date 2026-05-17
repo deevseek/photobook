@@ -14,6 +14,10 @@ class PhotobookDesignModel {
   final num designPrice;
   final bool idmlAvailable;
   final bool designSchemaAvailable;
+  final String? designSchemaSource;
+  final String? schemaStatus;
+  final String? previewStatus;
+  final String? idmlFileUrl;
   final String? description;
   final dynamic designSchema;
   final DesignSchemaModel? parsedDesignSchema;
@@ -31,6 +35,10 @@ class PhotobookDesignModel {
     required this.designPrice,
     required this.idmlAvailable,
     required this.designSchemaAvailable,
+    required this.designSchemaSource,
+    required this.schemaStatus,
+    required this.previewStatus,
+    required this.idmlFileUrl,
     required this.description,
     required this.designSchema,
     required this.parsedDesignSchema,
@@ -50,6 +58,10 @@ class PhotobookDesignModel {
       designPrice: num.tryParse('${json['design_price'] ?? 0}') ?? 0,
       idmlAvailable: json['idml_available'] == true || json['idml_available'] == 1,
       designSchemaAvailable: json['design_schema_available'] == true || json['design_schema_available'] == 1,
+      designSchemaSource: json['design_schema_source']?.toString(),
+      schemaStatus: json['schema_status']?.toString(),
+      previewStatus: json['preview_status']?.toString(),
+      idmlFileUrl: normalizeFileUrl(json['idml_file_url']?.toString()),
       description: json['description']?.toString(),
       designSchema: json['design_schema'],
       parsedDesignSchema: json['design_schema'] is Map<String, dynamic>
