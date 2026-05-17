@@ -3,9 +3,9 @@ class PhotobookProductModel {
   final String name;
   final String category;
   final String size;
-  final int basePrice;
+  final num basePrice;
   final int defaultPages;
-  final int additionalPagePrice;
+  final num additionalPagePrice;
   final String coverType;
   final String paperType;
   final int productionEstimateDays;
@@ -33,20 +33,20 @@ class PhotobookProductModel {
 
   factory PhotobookProductModel.fromJson(Map<String, dynamic> json) {
     return PhotobookProductModel(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: (json['name'] ?? '-').toString(),
-      category: (json['category'] ?? '-').toString(),
-      size: (json['size'] ?? '-').toString(),
-      basePrice: (json['base_price'] as num?)?.toInt() ?? 0,
-      defaultPages: (json['default_pages'] as num?)?.toInt() ?? 0,
-      additionalPagePrice: (json['additional_page_price'] as num?)?.toInt() ?? 0,
-      coverType: (json['cover_type'] ?? '-').toString(),
-      paperType: (json['paper_type'] ?? '-').toString(),
-      productionEstimateDays: (json['production_estimate_days'] as num?)?.toInt() ?? 0,
+      id: int.tryParse('${json['id']}') ?? 0,
+      name: json['name']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      size: json['size']?.toString() ?? '',
+      basePrice: num.tryParse('${json['base_price'] ?? 0}') ?? 0,
+      defaultPages: int.tryParse('${json['default_pages'] ?? 0}') ?? 0,
+      additionalPagePrice: num.tryParse('${json['additional_page_price'] ?? 0}') ?? 0,
+      coverType: json['cover_type']?.toString() ?? '',
+      paperType: json['paper_type']?.toString() ?? '',
+      productionEstimateDays: int.tryParse('${json['production_estimate_days'] ?? 0}') ?? 0,
       imageUrl: json['image_url']?.toString(),
-      activeDesignsCount: (json['active_designs_count'] as num?)?.toInt() ?? 0,
+      activeDesignsCount: int.tryParse('${json['active_designs_count'] ?? 0}') ?? 0,
       isActive: json['is_active'] == true || json['is_active'] == 1,
-      description: (json['description'] ?? '-').toString(),
+      description: json['description']?.toString() ?? '',
     );
   }
 }
