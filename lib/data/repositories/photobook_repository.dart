@@ -12,6 +12,24 @@ import '../models/price_calculation_model.dart';
 import '../models/shipping_rate_model.dart';
 import '../models/tracking_model.dart';
 
+class UploadedProjectPhoto {
+  final int photoId;
+  final String frameId;
+  final int pageNumber;
+  final String fileUrl;
+  final String filePath;
+
+  const UploadedProjectPhoto({required this.photoId, required this.frameId, required this.pageNumber, required this.fileUrl, required this.filePath});
+
+  factory UploadedProjectPhoto.fromJson(Map<String, dynamic> json) => UploadedProjectPhoto(
+        photoId: (json['photo_id'] as num?)?.toInt() ?? 0,
+        frameId: (json['frame_id'] ?? '').toString(),
+        pageNumber: (json['page_number'] as num?)?.toInt() ?? 0,
+        fileUrl: (json['file_url'] ?? '').toString(),
+        filePath: (json['file_path'] ?? '').toString(),
+      );
+}
+
 class PhotobookRepository {
   PhotobookRepository({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
   final ApiClient _apiClient; String get _p=>ApiConfig.photobookPrefix;
@@ -51,6 +69,15 @@ class PhotobookRepository {
   Future<List<PhotobookOrderModel>> getOrders() async => extractListFromApiResponse(await _apiClient.get('$_p/orders')).whereType<Map<String, dynamic>>().map(PhotobookOrderModel.fromJson).toList();
   Future<PhotobookOrderModel> getOrderDetail(String n) async => PhotobookOrderModel.fromJson(_toMap(await _apiClient.get('$_p/orders/$n')));
   Future<void> saveProject(String n, Map<String,dynamic> pj) async => _apiClient.post('$_p/orders/$n/save-project', body: {'project_json': pj});
+  Future<UploadedProjectPhoto> uploadProjectPhoto({required int designId, required String frameId, required int pageNumber, required List<int> bytes, required String filename}) async {
+    final formData = FormData.fromMap({
+      'design_id': designId,
+      'frame_id': frameId,
+      'page_number': pageNumber,
+      'photo': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    return UploadedProjectPhoto.fromJson(_toMap(await _apiClient.postMultipart('$_p/project-photos/upload', formData: formData)));
+  }
   Future<void> uploadFinalPdf(String n, File finalPdf, Map<String,dynamic> pj, int pageCount,{ProgressCallback? onSendProgress}) async {final f=FormData.fromMap({'final_pdf':await MultipartFile.fromFile(finalPdf.path,filename:'final.pdf'),'project_json':pj,'page_count':pageCount}); await _apiClient.postMultipart('$_p/orders/$n/upload-final-pdf', formData:f,onSendProgress:onSendProgress);}
   Future<Map<String,dynamic>> getPrintFile(String n) async => _toMap(await _apiClient.get('$_p/orders/$n/print-file'));
   Future<TrackingModel> getTracking(String n) async => TrackingModel.fromJson(await _apiClient.get('$_p/orders/$n/tracking'));
