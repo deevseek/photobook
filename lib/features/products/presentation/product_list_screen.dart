@@ -40,6 +40,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             itemCount: items.length,
             itemBuilder: (_, i) {
               final p = items[i];
+              debugPrint('PRODUCT IMAGE URL: ${p.imageUrl}');
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(

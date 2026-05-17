@@ -1,3 +1,5 @@
+import '../../core/utils/url_normalizer.dart';
+
 class PhotobookDesignModel {
   final int id;
   final String title;
@@ -40,7 +42,7 @@ class PhotobookDesignModel {
       size: (json['size'] ?? '-').toString(),
       totalPages: (json['total_pages'] as num?)?.toInt() ?? 0,
       pageSize: (json['page_size'] ?? '-').toString(),
-      thumbnailUrl: json['thumbnail_url']?.toString(),
+      thumbnailUrl: normalizeImageUrl(json['thumbnail_url']?.toString()),
       contributorName: (json['contributor_name'] ?? '-').toString(),
       designPrice: (json['design_price'] as num?)?.toInt() ?? 0,
       idmlAvailable: json['idml_available'] == true || json['idml_available'] == 1,
