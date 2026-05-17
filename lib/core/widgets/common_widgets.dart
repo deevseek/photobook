@@ -45,18 +45,6 @@ class PriceText extends StatelessWidget {
   Widget build(BuildContext context) => Text('Rp ${price.toString()}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy));
 }
 
-class StatusBadge extends StatelessWidget {
-  final String text;
-  final Color color;
-  const StatusBadge({super.key, required this.text, required this.color});
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
-        child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-      );
-}
-
 class EmptyState extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -64,32 +52,55 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.inbox_outlined, size: 72), Text(title), Text(subtitle)]));
 }
-class LoadingState extends StatelessWidget { const LoadingState({super.key}); @override Widget build(BuildContext context) => const Center(child: CircularProgressIndicator()); }
-class ErrorState extends StatelessWidget { final String message; const ErrorState({super.key, required this.message}); @override Widget build(BuildContext context) => Center(child: Text(message)); }
+
+class LoadingState extends StatelessWidget {
+  const LoadingState({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(child: CircularProgressIndicator());
+}
+
+class ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback? onRetry;
+  const ErrorState({super.key, required this.message, this.onRetry});
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
+            const SizedBox(height: 8),
+            Text(message, textAlign: TextAlign.center),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              AppButton(label: 'Coba Lagi', onPressed: onRetry!, icon: Icons.refresh_rounded),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class ProductCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final int price;
+  final String? imageUrl;
   final VoidCallback onTap;
-  const ProductCard({super.key, required this.title, required this.subtitle, required this.price, required this.onTap});
+  const ProductCard({super.key, required this.title, required this.subtitle, required this.price, required this.onTap, this.imageUrl});
   @override
-  Widget build(BuildContext context) => Card(child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(height: 110, decoration: BoxDecoration(color: AppColors.softGray, borderRadius: BorderRadius.circular(16))), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), Text(subtitle), PriceText(price: price)]))));
+  Widget build(BuildContext context) => Card(child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(height: 110, decoration: BoxDecoration(color: AppColors.softGray, borderRadius: BorderRadius.circular(16)), clipBehavior: Clip.antiAlias, child: imageUrl != null && imageUrl!.isNotEmpty ? Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox()) : null), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), Text(subtitle), PriceText(price: price)]))));
 }
 
 class DesignCard extends StatelessWidget {
   final String name;
+  final String thumbnailUrl;
   final VoidCallback onTap;
-  const DesignCard({super.key, required this.name, required this.onTap});
+  const DesignCard({super.key, required this.name, required this.onTap, required this.thumbnailUrl});
   @override
-  Widget build(BuildContext context) => Card(child: ListTile(onTap: onTap, leading: Container(width: 52, height: 52, decoration: BoxDecoration(color: AppColors.softGray, borderRadius: BorderRadius.circular(12))), title: Text(name), subtitle: const Text('Template siap pakai')));
-}
-
-class OrderCard extends StatelessWidget {
-  final String orderNo;
-  final String status;
-  final Color color;
-  const OrderCard({super.key, required this.orderNo, required this.status, required this.color});
-  @override
-  Widget build(BuildContext context) => Card(child: ListTile(title: Text(orderNo), subtitle: const Text('PhotoBook A4 Hardcover'), trailing: StatusBadge(text: status, color: color)));
+  Widget build(BuildContext context) => Card(child: ListTile(onTap: onTap, leading: ClipRRect(borderRadius: BorderRadius.circular(12), child: SizedBox(width: 52, height: 52, child: thumbnailUrl.isEmpty ? Container(color: AppColors.softGray) : Image.network(thumbnailUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.softGray)))), title: Text(name), subtitle: const Text('Template siap pakai')));
 }
