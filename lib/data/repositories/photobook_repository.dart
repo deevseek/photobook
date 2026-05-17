@@ -23,7 +23,26 @@ class PhotobookRepository {
     return items.whereType<Map<String, dynamic>>().map(PhotobookProductModel.fromJson).toList();
   }
   Future<PhotobookProductModel> getProductDetail(int id) async => PhotobookProductModel.fromJson(_toMap(await _apiClient.get('$_p/products/$id')));
-  Future<List<PhotobookDesignModel>> getProductDesigns(int productId) async => extractListFromApiResponse(await _apiClient.get('$_p/products/$productId/designs')).whereType<Map<String, dynamic>>().map(PhotobookDesignModel.fromJson).toList();
+  Future<List<PhotobookDesignModel>> getProductDesigns(int productId) async {
+    final endpoint = '$_p/products/$productId/designs';
+    debugPrint('DESIGN API URL: $endpoint');
+    final responseData = await _apiClient.get(endpoint);
+    debugPrint('DESIGN API RESPONSE: $responseData');
+
+    final rawData = responseData is Map<String, dynamic> ? responseData['data'] : responseData;
+
+    List<dynamic> items;
+
+    if (rawData is List) {
+      items = rawData;
+    } else if (rawData is Map && rawData['data'] is List) {
+      items = rawData['data'] as List<dynamic>;
+    } else {
+      items = [];
+    }
+
+    return items.whereType<Map<String, dynamic>>().map((item) => PhotobookDesignModel.fromJson(item)).toList();
+  }
   Future<List<PhotobookDesignModel>> getDesigns() async => extractListFromApiResponse(await _apiClient.get('$_p/designs')).whereType<Map<String, dynamic>>().map(PhotobookDesignModel.fromJson).toList();
   Future<PhotobookDesignModel> getDesignDetail(int id) async => PhotobookDesignModel.fromJson(_toMap(await _apiClient.get('$_p/designs/$id')));
   Future<String?> downloadIdml(int id) async => _toMap(await _apiClient.get('$_p/designs/$id/download-idml'))['download_url']?.toString();
