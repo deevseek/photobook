@@ -40,7 +40,8 @@ class RouteGenerator {
         if (designId == null) return _fallbackRoute();
         return MaterialPageRoute(builder: (_) => DesignDetailScreen(designId: designId));
       case AppRoutes.editorPlaceholder:
-        return MaterialPageRoute(builder: (_) => const EditorPlaceholderScreen());
+        final designName = settings.arguments as String? ?? '-';
+        return MaterialPageRoute(builder: (_) => EditorPlaceholderScreen(designName: designName));
       case AppRoutes.checkoutPlaceholder:
         return MaterialPageRoute(builder: (_) => const CheckoutPlaceholderScreen());
       case AppRoutes.orders:

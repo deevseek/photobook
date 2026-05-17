@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/routes/app_routes.dart';
 import '../../../core/widgets/common_widgets.dart';
-import '../../photobook/data/photobook_repository.dart';
+import '../../../data/models/photobook_product_model.dart';
+import '../../../data/repositories/photobook_repository.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -13,7 +14,7 @@ class ProductListScreen extends StatefulWidget {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   final _repo = PhotobookRepository();
-  late Future<dynamic> _future;
+  late Future<List<PhotobookProductModel>> _future;
 
   @override
   void initState() {
@@ -27,25 +28,39 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Produk PhotoBook')),
-      body: FutureBuilder(
+      body: FutureBuilder<List<PhotobookProductModel>>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) return const LoadingState();
           if (snapshot.hasError) return ErrorState(message: snapshot.error.toString(), onRetry: _retry);
-          final items = snapshot.data as List;
+          final items = snapshot.data ?? [];
           if (items.isEmpty) return const EmptyState(title: 'Produk kosong', subtitle: 'Belum ada produk PhotoBook tersedia.');
-          return GridView.builder(
+          return ListView.builder(
             padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.8),
             itemCount: items.length,
-            itemBuilder: (context, i) {
+            itemBuilder: (_, i) {
               final p = items[i];
-              return ProductCard(
-                title: p.name,
-                subtitle: p.coverType ?? '-',
-                price: p.price,
-                imageUrl: p.imageUrl,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: p.id),
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    ClipRRect(borderRadius: BorderRadius.circular(12), child: SizedBox(height: 160, width: double.infinity, child: NetworkImageFallback(imageUrl: p.imageUrl))),
+                    const SizedBox(height: 8),
+                    Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text('${p.category} • ${p.size}'),
+                    PriceText(price: p.basePrice),
+                    Text('Default halaman: ${p.defaultPages}'),
+                    Text('Tambah halaman: Rp ${p.additionalPagePrice}'),
+                    Text('Estimasi produksi: ${p.productionEstimateDays} hari'),
+                    Text('Desain aktif: ${p.activeDesignsCount}'),
+                    const SizedBox(height: 8),
+                    AppButton(
+                      label: 'Pilih Produk',
+                      onPressed: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: p.id),
+                    ),
+                  ]),
+                ),
               );
             },
           );
