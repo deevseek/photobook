@@ -63,6 +63,15 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
   }
 
+  List<DesignFrameModel> _getMissingFrames() {
+    final schema = _schema;
+    if (schema == null) return const [];
+    return schema.pages
+        .expand((page) => page.frames)
+        .where((frame) => !selectedPhotoFilesByFrameId.containsKey(frame.id))
+        .toList();
+  }
+
   Map<String, dynamic> buildProjectJson() {
     final schema = _schema!;
     return {
@@ -75,11 +84,61 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         'frames': page.frames.map((frame) => {
           'frame_id': frame.id,
           'photo_attached': selectedPhotoFilesByFrameId.containsKey(frame.id),
-          'photo_name': selectedPhotoFilesByFrameId[frame.id]?.name,
-          'crop': {'x': 0, 'y': 0, 'scale': 1, 'rotation': 0},
+          'photo_file_name': selectedPhotoFilesByFrameId[frame.id]?.name,
+          'crop': {'fit': 'cover', 'x': 0, 'y': 0, 'scale': 1, 'rotation': 0},
         }).toList(),
       }).toList(),
     };
+  }
+
+  void _openPreview() {
+    final schema = _schema;
+    if (schema == null) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _PhotobookPreviewScreen(
+        schema: schema,
+        selectedPhotoBytesByFrameId: selectedPhotoBytesByFrameId,
+      ),
+    ));
+  }
+
+  Future<void> _onCheckoutPressed() async {
+    final missingFrames = _getMissingFrames();
+    if (missingFrames.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Siap lanjut checkout.')));
+      return;
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Masih ada frame foto yang belum diisi.'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: missingFrames
+                .map((frame) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('• ${frame.placeholder} belum diisi'),
+                    ))
+                .toList(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Lengkapi Foto')),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lanjut checkout meski foto belum lengkap.')));
+            },
+            child: const Text('Lanjutkan'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -145,7 +204,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                                   )),
                               ...page.frames.map((f) => PhotoFrameWidget(
                                     frame: f,
-                                    selectedBytes: selectedPhotoBytesByFrameId[f.id],
+                                    imageBytes: selectedPhotoBytesByFrameId[f.id],
                                     scaleX: scaleX,
                                     scaleY: scaleY,
                                     onTap: () => _pickForFrame(f),
@@ -192,15 +251,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: () {
-                  final json = buildProjectJson();
-                  showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Preview Project JSON'), content: SingleChildScrollView(child: Text(json.toString()))));
-                },
+                onPressed: _openPreview,
                 child: const Text('Preview'),
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(child: FilledButton(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Siap lanjut checkout.'))), child: const Text('Lanjut Checkout'))),
+            Expanded(child: FilledButton(onPressed: _onCheckoutPressed, child: const Text('Lanjut Checkout'))),
           ],
         ),
       ),
@@ -216,40 +272,98 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
 class PhotoFrameWidget extends StatelessWidget {
   final DesignFrameModel frame;
-  final Uint8List? selectedBytes;
+  final Uint8List? imageBytes;
   final VoidCallback onTap;
   final double scaleX;
   final double scaleY;
 
-  const PhotoFrameWidget({super.key, required this.frame, required this.selectedBytes, required this.onTap, required this.scaleX, required this.scaleY});
+  const PhotoFrameWidget({super.key, required this.frame, required this.imageBytes, required this.onTap, required this.scaleX, required this.scaleY});
 
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(frame.borderRadius * ((scaleX + scaleY) / 2));
+    final content = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: imageBytes == null ? Colors.white.withValues(alpha: 0.25) : null,
+            borderRadius: radius,
+            border: Border.all(color: Colors.white70),
+          ),
+          child: ClipRRect(
+            borderRadius: radius,
+            // TODO: support polygon clipping path from IDML points when backend sends polygon_points.
+            child: imageBytes != null
+                ? Image.memory(imageBytes!, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                : Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.add_photo_alternate_outlined), Text(frame.placeholder, style: const TextStyle(fontSize: 12))]),
+          ),
+        ),
+      ),
+    );
+
     return Positioned(
       left: frame.x * scaleX,
       top: frame.y * scaleY,
       width: frame.width * scaleX,
       height: frame.height * scaleY,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: radius,
-          child: Ink(
-            decoration: BoxDecoration(
-              color: selectedBytes == null ? Colors.white.withValues(alpha: 0.4) : null,
-              borderRadius: radius,
-              border: Border.all(color: Colors.white70),
-            ),
-            child: ClipRRect(
-              borderRadius: radius,
-              child: selectedBytes != null
-                  ? Image.memory(selectedBytes!, fit: BoxFit.cover)
-                  : Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.add_photo_alternate_outlined), Text(frame.placeholder, style: const TextStyle(fontSize: 12))]),
-            ),
-          ),
-        ),
+      child: frame.rotation == 0 ? content : Transform.rotate(angle: frame.rotation * math.pi / 180, child: content),
+    );
+  }
+}
+
+class _PhotobookPreviewScreen extends StatelessWidget {
+  final DesignSchemaModel schema;
+  final Map<String, Uint8List> selectedPhotoBytesByFrameId;
+
+  const _PhotobookPreviewScreen({required this.schema, required this.selectedPhotoBytesByFrameId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Preview')),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: schema.pages.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, pageIndex) {
+          final page = schema.pages[pageIndex];
+          return AspectRatio(
+            aspectRatio: schema.pageWidth / schema.pageHeight,
+            child: LayoutBuilder(builder: (context, constraints) {
+              final scaleX = constraints.maxWidth / schema.pageWidth;
+              final scaleY = constraints.maxHeight / schema.pageHeight;
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: page.backgroundUrl != null
+                          ? Image.network(page.backgroundUrl!, fit: BoxFit.cover)
+                          : Container(color: Colors.white),
+                    ),
+                    ...page.assets.map((asset) => Positioned(
+                          left: asset.x * scaleX,
+                          top: asset.y * scaleY,
+                          width: asset.width * scaleX,
+                          height: asset.height * scaleY,
+                          child: asset.url != null ? AppNetworkImage(url: asset.url, fit: BoxFit.cover) : const SizedBox.shrink(),
+                        )),
+                    ...page.frames.where((frame) => selectedPhotoBytesByFrameId.containsKey(frame.id)).map((frame) => PhotoFrameWidget(
+                          frame: frame,
+                          imageBytes: selectedPhotoBytesByFrameId[frame.id],
+                          scaleX: scaleX,
+                          scaleY: scaleY,
+                          onTap: () {},
+                        )),
+                  ],
+                ),
+              );
+            }),
+          );
+        },
       ),
     );
   }
