@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../data/models/design_schema_model.dart';
 import '../../../data/models/photobook_design_model.dart';
 import '../../../data/repositories/photobook_repository.dart';
+import '../../checkout/presentation/photobook_checkout_screen.dart';
+import 'photobook_preview_screen.dart';
 
 class FramePhotoState {
   final String frameId;
@@ -152,7 +154,10 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         const SizedBox(height: 8),
         _buildPageThumbnails(schema),
         const SizedBox(height: 8),
-        _buildBottomActions(context, schema),
+        Material(
+          color: Colors.transparent,
+          child: _buildBottomActions(),
+        ),
       ],
     );
   }
@@ -262,32 +267,28 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
-  Widget _buildBottomActions(
-    BuildContext context,
-    DesignSchemaModel schema,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                // TODO: buka preview
-              },
-              child: const Text('Preview'),
+  Widget _buildBottomActions() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _openPreview,
+                child: const Text('Preview'),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                _handleCheckout(schema);
-              },
-              child: const Text('Lanjut Checkout'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _handleCheckout,
+                child: const Text('Lanjut Checkout'),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -397,13 +398,52 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     });
   }
 
-  void _handleCheckout(DesignSchemaModel schema) {
+  void _openPreview() {
+    debugPrint('PREVIEW BUTTON CLICKED');
+    final schema = _schema;
+
+    if (schema == null || schema.pages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Template tidak memiliki halaman.'),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotobookPreviewScreen(
+          design: widget.design,
+          schema: schema,
+          photoStateByFrameId: _photoStateByFrameId,
+        ),
+      ),
+    );
+  }
+
+  void _handleCheckout() {
+    debugPrint('CHECKOUT BUTTON CLICKED');
+    final schema = _schema;
+
+    if (schema == null || schema.pages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Template tidak memiliki halaman.'),
+        ),
+      );
+      return;
+    }
+
     final missingFrames = <String>[];
 
     for (final page in schema.pages) {
       for (final frame in page.frames) {
-        if (!_photoStateByFrameId.containsKey(frame.id)) {
-          missingFrames.add('${frame.placeholder} - Page ${page.pageNumber}');
+        final state = _photoStateByFrameId[frame.id];
+
+        if (state == null || state.imageBytes == null) {
+          missingFrames.add('Halaman ${page.pageNumber}: ${frame.placeholder}');
         }
       }
     }
@@ -413,7 +453,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Foto belum lengkap'),
-          content: Text(missingFrames.join('\n')),
+          content: SingleChildScrollView(
+            child: Text(
+              'Lengkapi foto berikut sebelum checkout:\n\n${missingFrames.join('\n')}',
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -425,6 +469,15 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       return;
     }
 
-    // TODO: lanjut checkout
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotobookCheckoutScreen(
+          design: widget.design,
+          product: widget.productId,
+          photoStateByFrameId: _photoStateByFrameId,
+        ),
+      ),
+    );
   }
 }
