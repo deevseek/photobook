@@ -81,8 +81,18 @@ class PhotobookRepository {
   Future<void> uploadFinalPdf(String n, File finalPdf, Map<String,dynamic> pj, int pageCount,{ProgressCallback? onSendProgress}) async {final f=FormData.fromMap({'final_pdf':await MultipartFile.fromFile(finalPdf.path,filename:'final.pdf'),'project_json':pj,'page_count':pageCount}); await _apiClient.postMultipart('$_p/orders/$n/upload-final-pdf', formData:f,onSendProgress:onSendProgress);}
   Future<Map<String,dynamic>> getPrintFile(String n) async => _toMap(await _apiClient.get('$_p/orders/$n/print-file'));
   Future<TrackingModel> getTracking(String n) async => TrackingModel.fromJson(await _apiClient.get('$_p/orders/$n/tracking'));
-  Future<List<ShippingRateModel>> getShippingRates(Map<String,dynamic> body) async => _toList(await _apiClient.post('$_p/shipping/rates',body:body)).map(ShippingRateModel.fromJson).toList();
-  Future<PaymentResponseModel> createPayment(String n) async => PaymentResponseModel.fromJson(_toMap(await _apiClient.post('$_p/payment/create', body: {'order_number':n})));
+  Future<List<ShippingRateModel>> getShippingRates(Map<String,dynamic> body) async {
+    final response = await _apiClient.post('$_p/shipping/rates', body: body);
+    final mapped = response is Map<String, dynamic> ? response : <String, dynamic>{};
+    final list = mapped['data'] is List ? mapped['data'] as List : (response is List ? response : <dynamic>[]);
+    return list.whereType<Map<String, dynamic>>().map(ShippingRateModel.fromJson).toList();
+  }
+  Future<PaymentResponseModel> createPayment(String n) async {
+    final response = await _apiClient.post('$_p/payment/create', body: {'order_number':n});
+    final map = _toMap(response);
+    final data = map['data'] is Map<String, dynamic> ? map['data'] as Map<String, dynamic> : map;
+    return PaymentResponseModel.fromJson(data);
+  }
   List<dynamic> extractListFromApiResponse(dynamic responseData) {
     if (responseData is! Map<String, dynamic>) {
       return [];
