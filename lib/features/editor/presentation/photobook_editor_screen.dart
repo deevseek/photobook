@@ -474,7 +474,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       MaterialPageRoute(
         builder: (_) => PhotobookCheckoutScreen(
           design: widget.design,
-          product: widget.productId,
+          productId: widget.productId,
+          schema: schema,
           photoStateByFrameId: _photoStateByFrameId,
         ),
       ),
