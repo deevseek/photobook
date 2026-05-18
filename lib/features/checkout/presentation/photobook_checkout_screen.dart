@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -299,7 +300,7 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
 
       await _repo.saveProject(order.orderNumber, _buildProjectJson(product));
 
-      final payment = await _repo.createPayment(order.orderNumber);
+      final payment = await _repo.createPayment(order.orderNumber, requirePrintFileReady: true);
       final redirectUrl = payment.redirectUrl;
       if (redirectUrl == null || redirectUrl.isEmpty) {
         _showSnackbar('Payment berhasil dibuat, tapi redirect URL tidak tersedia.');
@@ -307,12 +308,42 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
       }
 
       final launched = await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.externalApplication);
-      if (!launched) _showSnackbar('Tidak bisa membuka halaman pembayaran.');
+      if (!launched) {
+        _showSnackbar('Tidak bisa membuka halaman pembayaran.');
+        return;
+      }
+
+      _showSnackbar('Menunggu konfirmasi pembayaran dari server...');
+      final updatedOrder = await _pollPaidStatus(order.orderNumber);
+      if (!mounted) return;
+      if (updatedOrder != null && updatedOrder.paymentStatus.toLowerCase() == 'paid') {
+        _showSnackbar('Pembayaran terkonfirmasi. Pesanan masuk proses produksi.');
+      } else {
+        _showSnackbar('Pembayaran belum terkonfirmasi. Silakan cek detail pesanan atau coba lagi beberapa saat.');
+      }
     } catch (e) {
       _showSnackbar('Proses pembayaran gagal: $e');
     } finally {
       if (mounted) setState(() => isCreatingPayment = false);
     }
+  }
+
+  Future<dynamic> _pollPaidStatus(String orderNumber) async {
+    const totalAttempts = 24; // 24 x 5 detik = 2 menit
+    for (var i = 0; i < totalAttempts; i++) {
+      await Future.delayed(const Duration(seconds: 5));
+      try {
+        final order = await _repo.getOrderDetail(orderNumber);
+        final status = order.paymentStatus.toLowerCase();
+        if (status == 'paid' || status == 'failed' || status == 'cancel' || status == 'expire') {
+          return order;
+        }
+      } catch (_) {
+        // Abaikan error sementara saat polling dan lanjutkan retry.
+      }
+    }
+
+    return null;
   }
 
   Map<String, dynamic> _buildProjectJson(PhotobookProductModel product) {
