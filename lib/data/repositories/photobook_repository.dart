@@ -87,8 +87,8 @@ class PhotobookRepository {
     final list = mapped['data'] is List ? mapped['data'] as List : (response is List ? response : <dynamic>[]);
     return list.whereType<Map<String, dynamic>>().map(ShippingRateModel.fromJson).toList();
   }
-  Future<PaymentResponseModel> createPayment(String n) async {
-    final response = await _apiClient.post('$_p/payment/create', body: {'order_number':n});
+  Future<PaymentResponseModel> createPayment(String n, {bool requirePrintFileReady = true}) async {
+    final response = await _apiClient.post('$_p/payment/create', body: {'order_number': n, 'require_print_file_ready': requirePrintFileReady});
     final map = _toMap(response);
     final data = map['data'] is Map<String, dynamic> ? map['data'] as Map<String, dynamic> : map;
     return PaymentResponseModel.fromJson(data);
