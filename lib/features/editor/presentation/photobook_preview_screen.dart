@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
@@ -13,12 +12,16 @@ class PhotobookPreviewScreen extends StatelessWidget {
     required this.schema,
     required this.photoStateByFrameId,
     required this.editedTextById,
+    this.onBackToEdit,
+    this.onContinueCheckout,
   });
 
   final PhotobookDesignModel design;
   final DesignSchemaModel schema;
   final Map<String, FramePhotoState> photoStateByFrameId;
   final Map<String, String> editedTextById;
+  final VoidCallback? onBackToEdit;
+  final VoidCallback? onContinueCheckout;
 
   @override
   Widget build(BuildContext context) {
@@ -26,54 +29,81 @@ class PhotobookPreviewScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('Preview - ${design.title}'),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: schema.pages.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 20),
-        itemBuilder: (context, index) {
-          final page = schema.pages[index];
-          final missingFrames = page.frames
-              .where((frame) => photoStateByFrameId[frame.id]?.imageBytes == null)
-              .length;
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: schema.pages.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 20),
+              itemBuilder: (context, index) {
+                final page = schema.pages[index];
+                final missingFrames = page.frames
+                    .where((frame) => photoStateByFrameId[frame.id]?.imageBytes == null)
+                    .length;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Halaman ${page.pageNumber}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(width: 8),
-                  if (missingFrames > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        'Foto belum lengkap',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.orange.shade900,
-                          fontWeight: FontWeight.w600,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Halaman ${page.pageNumber}',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        if (missingFrames > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'Foto belum diisi',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange.shade900,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _PreviewPageCanvas(
-                schema: schema,
-                page: page,
-                photoStateByFrameId: photoStateByFrameId,
-                editedTextById: editedTextById,
-              ),
-            ],
-          );
-        },
+                    const SizedBox(height: 10),
+                    _PreviewPageCanvas(
+                      schema: schema,
+                      page: page,
+                      photoStateByFrameId: photoStateByFrameId,
+                      editedTextById: editedTextById,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onBackToEdit ?? () => Navigator.pop(context),
+                    child: const Text('Kembali Edit'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onContinueCheckout,
+                    child: const Text('Lanjut Checkout'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -195,12 +225,6 @@ class _PreviewPageCanvas extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (kDebugMode)
-                            Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.blueGrey.shade200, width: 0.6),
-                              ),
-                            ),
                         ],
                       ),
                     ),
@@ -209,9 +233,6 @@ class _PreviewPageCanvas extends StatelessWidget {
                 ...page.texts.map((text) {
                   final displayText = editedTextById[text.id] ?? text.text;
                   final isEmpty = displayText.trim().isEmpty;
-                  final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
-                      ? text.placeholder!.trim()
-                      : 'Ketuk untuk edit teks';
                   return Positioned(
                     left: text.x * scaleX,
                     top: text.y * scaleY,
@@ -222,12 +243,11 @@ class _PreviewPageCanvas extends StatelessWidget {
                       child: Align(
                         alignment: _parseTextAlignment(text.style.textAlign),
                         child: Text(
-                          isEmpty ? placeholder : displayText,
+                          isEmpty ? '' : displayText,
                           textAlign: _parseTextAlign(text.style.textAlign),
                           style: text.style.toTextStyle().copyWith(
                                 fontSize: (text.style.fontSize ?? 16) * scaleY,
-                                fontStyle: isEmpty ? FontStyle.italic : null,
-                                color: isEmpty ? Colors.grey.shade500 : text.style.colorValue,
+                                color: text.style.colorValue,
                               ),
                         ),
                       ),
