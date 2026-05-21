@@ -7,7 +7,10 @@ class PhotobookDesignModel {
   final String category;
   final String theme;
   final String size;
-  final int totalPages;
+  final int? totalPages;
+  final int? previewPagesCount;
+  final int? schemaPagesCount;
+  final String? pagesCountSource;
   final String? pageSize;
   final String? thumbnailUrl;
   final String contributorName;
@@ -19,7 +22,7 @@ class PhotobookDesignModel {
   final String? previewStatus;
   final String? idmlFileUrl;
   final String? description;
-  final dynamic designSchema;
+  final DesignSchemaModel? designSchema;
   final DesignSchemaModel? parsedDesignSchema;
 
   const PhotobookDesignModel({
@@ -29,6 +32,9 @@ class PhotobookDesignModel {
     required this.theme,
     required this.size,
     required this.totalPages,
+    required this.previewPagesCount,
+    required this.schemaPagesCount,
+    required this.pagesCountSource,
     required this.pageSize,
     required this.thumbnailUrl,
     required this.contributorName,
@@ -51,7 +57,10 @@ class PhotobookDesignModel {
       category: json['category']?.toString() ?? '',
       theme: json['theme']?.toString() ?? '',
       size: json['size']?.toString() ?? '',
-      totalPages: int.tryParse('${json['total_pages'] ?? 0}') ?? 0,
+      totalPages: int.tryParse('${json['total_pages']}'),
+      previewPagesCount: int.tryParse('${json['preview_pages_count']}'),
+      schemaPagesCount: int.tryParse('${json['schema_pages_count']}'),
+      pagesCountSource: json['pages_count_source']?.toString(),
       pageSize: json['page_size']?.toString(),
       thumbnailUrl: normalizeFileUrl(json['thumbnail_url']?.toString()),
       contributorName: json['contributor_name']?.toString() ?? '',
@@ -63,7 +72,9 @@ class PhotobookDesignModel {
       previewStatus: json['preview_status']?.toString(),
       idmlFileUrl: normalizeFileUrl(json['idml_file_url']?.toString()),
       description: json['description']?.toString(),
-      designSchema: json['design_schema'],
+      designSchema: json['design_schema'] is Map<String, dynamic>
+          ? DesignSchemaModel.fromJson(json['design_schema'] as Map<String, dynamic>)
+          : null,
       parsedDesignSchema: json['design_schema'] is Map<String, dynamic>
           ? DesignSchemaModel.fromJson(json['design_schema'] as Map<String, dynamic>)
           : null,
