@@ -681,6 +681,19 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       return;
     }
 
+    final missingFramesCount = schema.pages
+        .expand((page) => page.frames)
+        .where((frame) => _photoStateByFrameId[frame.id]?.imageBytes == null)
+        .length;
+
+    if (missingFramesCount > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$missingFramesCount frame foto belum diisi.'),
+        ),
+      );
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -689,6 +702,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           schema: schema,
           photoStateByFrameId: _photoStateByFrameId,
           editedTextById: _editedTextById,
+          onBackToEdit: () => Navigator.pop(context),
+          onContinueCheckout: _handleCheckout,
         ),
       ),
     );
