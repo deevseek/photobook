@@ -252,6 +252,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final displayText = _editedTextById[text.id] ?? text.text;
+    debugPrint('TEXT RENDER: ${text.id} => $displayText');
     final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
         ? text.placeholder!.trim()
         : 'Ketuk untuk edit teks';
@@ -351,7 +352,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                   ),
                   const SizedBox(width: 8),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, ''),
+                    onPressed: () => Navigator.pop(context, text.text),
                     child: const Text('Reset ke bawaan desain'),
                   ),
                   const Spacer(),
@@ -369,12 +370,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     controller.dispose();
 
     if (!mounted || result == null) return;
+    debugPrint('TEXT SAVE: ${text.id} => $result');
     setState(() {
-      if (result.isEmpty) {
+      if (result == text.text) {
         _editedTextById.remove(text.id);
       } else {
         _editedTextById[text.id] = result;
       }
+      debugPrint('EDITED TEXT MAP: $_editedTextById');
     });
   }
 
@@ -516,7 +519,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 child: ClipRRect(
                   borderRadius: radius,
                   child: hasPhoto
-                      ? _buildPhotoInFrame(state!)
+                      ? _buildCroppedPhoto(state!)
                       : Container(
                           color: Colors.white.withOpacity(0.20),
                           child: Center(
@@ -552,17 +555,16 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
-  Widget _buildPhotoInFrame(FramePhotoState state) {
-    return Transform.rotate(
-      angle: state.rotation * math.pi / 180,
+  Widget _buildCroppedPhoto(FramePhotoState state) {
+    return ClipRect(
       child: Transform.translate(
         offset: state.offset,
         child: Transform.scale(
           scale: state.scale,
-          child: SizedBox.expand(
-            child: FittedBox(
-              fit: BoxFit.cover,
-              child: Image.memory(state.imageBytes),
+          child: Transform.rotate(
+            angle: state.rotation * math.pi / 180,
+            child: SizedBox.expand(
+              child: Image.memory(state.imageBytes, fit: BoxFit.cover),
             ),
           ),
         ),
@@ -594,7 +596,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           ),
         );
       },
-      child: _buildPhotoInFrame(state),
+      child: _buildCroppedPhoto(state),
     );
   }
 
@@ -721,8 +723,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         builder: (_) => PhotobookPreviewScreen(
           design: widget.design,
           schema: schema,
-          photoStateByFrameId: _photoStateByFrameId,
-          editedTextById: _editedTextById,
+          photoStateByFrameId: Map.of(_photoStateByFrameId),
+          editedTextById: Map.of(_editedTextById),
           onBackToEdit: () => Navigator.pop(context),
           onContinueCheckout: _handleCheckout,
         ),
@@ -802,8 +804,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           design: widget.design,
           productId: widget.productId,
           schema: schema,
-          photoStateByFrameId: _photoStateByFrameId,
-          editedTextById: _editedTextById,
+          photoStateByFrameId: Map.of(_photoStateByFrameId),
+          editedTextById: Map.of(_editedTextById),
         ),
       ),
     );
