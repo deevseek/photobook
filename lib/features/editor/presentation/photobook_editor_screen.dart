@@ -252,7 +252,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final displayText = _editedTextById[text.id] ?? text.text;
-    debugPrint('TEXT RENDER: ${text.id} => $displayText');
+    debugPrint('TEXT RENDER id=${text.id} display=$displayText x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
     final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
         ? text.placeholder!.trim()
         : 'Ketuk untuk edit teks';
@@ -268,24 +268,34 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       height: text.height * scaleY,
       child: Transform.rotate(
         angle: text.rotation * math.pi / 180,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _openTextEditor(text),
-          child: Align(
-            alignment: _parseTextAlign(text.style.textAlign),
-            child: Text(
-              isEmptyText ? placeholder : displayText,
-              textAlign: _parseFlutterTextAlign(text.style.textAlign),
-              maxLines: null,
-              overflow: TextOverflow.visible,
-              style: isEmptyText
-                  ? textStyle.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey.shade500,
-                    )
-                  : textStyle,
+        alignment: Alignment.topLeft,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ColoredBox(color: _resolveTextMaskColor(text)),
             ),
-          ),
+            Align(
+              alignment: _parseTextAlign(text.style.textAlign),
+              child: Text(
+                isEmptyText ? placeholder : displayText,
+                textAlign: _parseFlutterTextAlign(text.style.textAlign),
+                maxLines: 10,
+                overflow: TextOverflow.visible,
+                style: isEmptyText
+                    ? textStyle.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade500,
+                      )
+                    : textStyle,
+              ),
+            ),
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => _openTextEditor(text),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -302,6 +312,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
   }
 
+
+  Color _resolveTextMaskColor(DesignTextModel text) {
+    return Colors.white;
+  }
+
   TextAlign _parseFlutterTextAlign(String? value) {
     switch (value?.toLowerCase()) {
       case 'center':
@@ -316,6 +331,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Future<void> _openTextEditor(DesignTextModel text) async {
+    debugPrint('TEXT TAP id=${text.id} original=${text.text} edited=${_editedTextById[text.id]} x=${text.x} y=${text.y}');
     final controller = TextEditingController(text: _editedTextById[text.id] ?? text.text);
     final result = await showModalBottomSheet<String?>(
       context: context,
