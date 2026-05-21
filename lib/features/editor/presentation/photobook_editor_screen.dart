@@ -83,14 +83,21 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         _error = null;
       });
 
-      final detail = widget.design.parsedDesignSchema != null
+      final detail = widget.design.designSchema != null
           ? widget.design
           : await _repo.getDesignDetail(widget.design.id);
-      final schema = detail.parsedDesignSchema;
+      final schema = detail.designSchema ?? detail.parsedDesignSchema;
 
-      if (schema == null) {
+      if ((detail.schemaStatus ?? '').toLowerCase() != 'ready') {
         setState(() {
-          _error = 'Design schema tidak ditemukan.';
+          _error = 'Template sedang diproses.';
+        });
+        return;
+      }
+
+      if (schema == null || schema.pages.isEmpty) {
+        setState(() {
+          _error = 'Template belum siap. Silakan coba lagi nanti.';
         });
         return;
       }
@@ -148,6 +155,19 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     return Column(
       children: [
+        if ((widget.design.previewStatus ?? '').toLowerCase() == 'failed')
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.amber,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'Background preview belum tersedia. Frame dan teks tetap bisa diedit.',
+            ),
+          ),
         Expanded(
           child: _buildCanvas(context, schema),
         ),

@@ -1,9 +1,11 @@
+import 'package:flutter/material.dart';
+
 import '../../core/utils/url_normalizer.dart';
 
 class DesignSchemaModel {
-  final String version;
-  final String source;
-  final String unit;
+  final String? version;
+  final String? source;
+  final String? parser;
   final double pageWidth;
   final double pageHeight;
   final List<DesignPageModel> pages;
@@ -11,7 +13,7 @@ class DesignSchemaModel {
   const DesignSchemaModel({
     required this.version,
     required this.source,
-    required this.unit,
+    required this.parser,
     required this.pageWidth,
     required this.pageHeight,
     required this.pages,
@@ -20,12 +22,13 @@ class DesignSchemaModel {
   factory DesignSchemaModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
     final pagesRaw = data['pages'];
+
     return DesignSchemaModel(
-      version: data['version']?.toString() ?? '1.0',
-      source: data['source']?.toString() ?? 'default',
-      unit: data['unit']?.toString() ?? 'px',
-      pageWidth: _toDouble(data['page_width']),
-      pageHeight: _toDouble(data['page_height']),
+      version: data['version']?.toString(),
+      source: data['source']?.toString(),
+      parser: data['parser']?.toString(),
+      pageWidth: _toDouble(data['page_width'], fallback: 2000),
+      pageHeight: _toDouble(data['page_height'], fallback: 3000),
       pages: pagesRaw is List
           ? pagesRaw
               .whereType<Map<String, dynamic>>()
@@ -35,27 +38,23 @@ class DesignSchemaModel {
     );
   }
 
-  static double _toDouble(dynamic value) =>
-      double.tryParse('${value ?? 0}') ?? 0;
+  static double _toDouble(dynamic value, {double fallback = 0}) =>
+      double.tryParse('${value ?? fallback}') ?? fallback;
 }
 
 class DesignPageModel {
   final int pageNumber;
-  final String? backgroundColor;
   final String? backgroundUrl;
   final String? previewUrl;
   final bool backgroundMissing;
-  final List<DesignAssetModel> assets;
   final List<DesignFrameModel> frames;
-  final List<dynamic> texts;
+  final List<DesignTextModel> texts;
 
   const DesignPageModel({
     required this.pageNumber,
-    required this.backgroundColor,
     required this.backgroundUrl,
     required this.previewUrl,
     required this.backgroundMissing,
-    required this.assets,
     required this.frames,
     required this.texts,
   });
@@ -63,28 +62,26 @@ class DesignPageModel {
   factory DesignPageModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
     final framesRaw = data['frames'];
-    final assetsRaw = data['assets'];
+    final textsRaw = data['texts'];
+
     return DesignPageModel(
       pageNumber: int.tryParse('${data['page_number'] ?? 0}') ?? 0,
-      backgroundColor: data['background_color']?.toString(),
       backgroundUrl: normalizeFileUrl(data['background_url']?.toString()),
       previewUrl: normalizeFileUrl(data['preview_url']?.toString()),
       backgroundMissing:
           data['background_missing'] == true || data['background_missing'] == 1,
-      assets: assetsRaw is List
-          ? assetsRaw
-              .whereType<Map<String, dynamic>>()
-              .map(DesignAssetModel.fromJson)
-              .toList()
-          : const [],
       frames: framesRaw is List
           ? framesRaw
               .whereType<Map<String, dynamic>>()
               .map(DesignFrameModel.fromJson)
               .toList()
           : const [],
-      texts:
-          data['texts'] is List ? List<dynamic>.from(data['texts'] as List) : const [],
+      texts: textsRaw is List
+          ? textsRaw
+              .whereType<Map<String, dynamic>>()
+              .map(DesignTextModel.fromJson)
+              .toList()
+          : const [],
     );
   }
 }
@@ -92,6 +89,7 @@ class DesignPageModel {
 class DesignFrameModel {
   final String id;
   final String type;
+  final int pageNumber;
   final double x;
   final double y;
   final double width;
@@ -100,11 +98,12 @@ class DesignFrameModel {
   final double borderRadius;
   final String placeholder;
   final String? sourceObject;
-  final Map<String, dynamic> meta;
+  final List<Offset>? polygonPoints;
 
   const DesignFrameModel({
     required this.id,
     required this.type,
+    required this.pageNumber,
     required this.x,
     required this.y,
     required this.width,
@@ -113,14 +112,16 @@ class DesignFrameModel {
     required this.borderRadius,
     required this.placeholder,
     required this.sourceObject,
-    required this.meta,
+    required this.polygonPoints,
   });
 
   factory DesignFrameModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
+
     return DesignFrameModel(
       id: data['id']?.toString() ?? '',
       type: data['type']?.toString() ?? 'photo',
+      pageNumber: int.tryParse('${data['page_number'] ?? 0}') ?? 0,
       x: DesignSchemaModel._toDouble(data['x']),
       y: DesignSchemaModel._toDouble(data['y']),
       width: DesignSchemaModel._toDouble(data['width']),
@@ -129,48 +130,152 @@ class DesignFrameModel {
       borderRadius: DesignSchemaModel._toDouble(data['border_radius']),
       placeholder: data['placeholder']?.toString() ?? 'Tambah Foto',
       sourceObject: data['source_object']?.toString(),
-      meta: data['meta'] is Map<String, dynamic>
-          ? Map<String, dynamic>.from(data['meta'] as Map<String, dynamic>)
-          : const {},
+      polygonPoints: _parsePolygonPoints(data['polygon_points']),
     );
+  }
+
+  static List<Offset>? _parsePolygonPoints(dynamic raw) {
+    if (raw is! List) {
+      return null;
+    }
+
+    final points = raw
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (point) => Offset(
+            DesignSchemaModel._toDouble(point['x']),
+            DesignSchemaModel._toDouble(point['y']),
+          ),
+        )
+        .toList();
+
+    return points.isEmpty ? null : points;
   }
 }
 
-class DesignAssetModel {
+class DesignTextModel {
   final String id;
   final String type;
-  final String? url;
+  final int pageNumber;
   final double x;
   final double y;
   final double width;
   final double height;
   final double rotation;
-  final double opacity;
+  final String text;
+  final bool editable;
+  final String? placeholder;
+  final TextStyleSchema style;
 
-  const DesignAssetModel({
+  const DesignTextModel({
     required this.id,
     required this.type,
-    required this.url,
+    required this.pageNumber,
     required this.x,
     required this.y,
     required this.width,
     required this.height,
     required this.rotation,
-    required this.opacity,
+    required this.text,
+    required this.editable,
+    required this.placeholder,
+    required this.style,
   });
 
-  factory DesignAssetModel.fromJson(Map<String, dynamic>? json) {
+  factory DesignTextModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
-    return DesignAssetModel(
+
+    return DesignTextModel(
       id: data['id']?.toString() ?? '',
-      type: data['type']?.toString() ?? 'image',
-      url: normalizeFileUrl(data['url']?.toString()),
+      type: data['type']?.toString() ?? 'text',
+      pageNumber: int.tryParse('${data['page_number'] ?? 0}') ?? 0,
       x: DesignSchemaModel._toDouble(data['x']),
       y: DesignSchemaModel._toDouble(data['y']),
       width: DesignSchemaModel._toDouble(data['width']),
       height: DesignSchemaModel._toDouble(data['height']),
       rotation: DesignSchemaModel._toDouble(data['rotation']),
-      opacity: DesignSchemaModel._toDouble(data['opacity'] ?? 1),
+      text: data['text']?.toString() ?? '',
+      editable: data['editable'] == true || data['editable'] == 1,
+      placeholder: data['placeholder']?.toString(),
+      style: TextStyleSchema.fromJson(data['style'] as Map<String, dynamic>?),
     );
+  }
+}
+
+class TextStyleSchema {
+  final String? fontFamily;
+  final double? fontSize;
+  final String? fontWeight;
+  final String? fontStyle;
+  final String? textAlign;
+  final String? color;
+  final double? lineHeight;
+
+  const TextStyleSchema({
+    required this.fontFamily,
+    required this.fontSize,
+    required this.fontWeight,
+    required this.fontStyle,
+    required this.textAlign,
+    required this.color,
+    required this.lineHeight,
+  });
+
+  factory TextStyleSchema.fromJson(Map<String, dynamic>? json) {
+    final data = json ?? <String, dynamic>{};
+
+    return TextStyleSchema(
+      fontFamily: data['font_family']?.toString(),
+      fontSize: double.tryParse('${data['font_size']}'),
+      fontWeight: data['font_weight']?.toString(),
+      fontStyle: data['font_style']?.toString(),
+      textAlign: data['text_align']?.toString(),
+      color: data['color']?.toString(),
+      lineHeight: double.tryParse('${data['line_height']}'),
+    );
+  }
+
+  Color? get colorValue => parseColor(color);
+
+  TextStyle toTextStyle() {
+    return TextStyle(
+      fontFamily: (fontFamily == null || fontFamily!.isEmpty) ? null : fontFamily,
+      fontSize: fontSize,
+      fontWeight: _parseFontWeight(fontWeight),
+      fontStyle: (fontStyle?.toLowerCase() == 'italic') ? FontStyle.italic : FontStyle.normal,
+      color: colorValue,
+      height: lineHeight,
+    );
+  }
+
+  static FontWeight? _parseFontWeight(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'bold':
+      case '700':
+        return FontWeight.w700;
+      case '600':
+        return FontWeight.w600;
+      case '500':
+        return FontWeight.w500;
+      case '300':
+        return FontWeight.w300;
+      default:
+        return null;
+    }
+  }
+
+  static Color? parseColor(String? hex) {
+    if (hex == null || hex.isEmpty) {
+      return null;
+    }
+
+    final cleaned = hex.replaceAll('#', '').trim();
+    if (cleaned.length == 6) {
+      return Color(int.parse('FF$cleaned', radix: 16));
+    }
+    if (cleaned.length == 8) {
+      return Color(int.parse(cleaned, radix: 16));
+    }
+    return null;
   }
 }
