@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 import '../../../data/models/design_schema_model.dart';
 import '../../../data/models/photobook_design_model.dart';
@@ -11,11 +12,13 @@ class PhotobookPreviewScreen extends StatelessWidget {
     required this.design,
     required this.schema,
     required this.photoStateByFrameId,
+    required this.editedTextById,
   });
 
   final PhotobookDesignModel design;
   final DesignSchemaModel schema;
   final Map<String, FramePhotoState> photoStateByFrameId;
+  final Map<String, String> editedTextById;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +69,7 @@ class PhotobookPreviewScreen extends StatelessWidget {
                 schema: schema,
                 page: page,
                 photoStateByFrameId: photoStateByFrameId,
+                editedTextById: editedTextById,
               ),
             ],
           );
@@ -80,11 +84,37 @@ class _PreviewPageCanvas extends StatelessWidget {
     required this.schema,
     required this.page,
     required this.photoStateByFrameId,
+    required this.editedTextById,
   });
 
   final DesignSchemaModel schema;
   final DesignPageModel page;
   final Map<String, FramePhotoState> photoStateByFrameId;
+  final Map<String, String> editedTextById;
+
+  Alignment _parseTextAlignment(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'center':
+        return Alignment.center;
+      case 'right':
+        return Alignment.centerRight;
+      default:
+        return Alignment.centerLeft;
+    }
+  }
+
+  TextAlign _parseTextAlign(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'center':
+        return TextAlign.center;
+      case 'right':
+        return TextAlign.right;
+      case 'justify':
+        return TextAlign.justify;
+      default:
+        return TextAlign.left;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +202,34 @@ class _PreviewPageCanvas extends StatelessWidget {
                               ),
                             ),
                         ],
+                      ),
+                    ),
+                  );
+                }),
+                ...page.texts.map((text) {
+                  final displayText = editedTextById[text.id] ?? text.text;
+                  final isEmpty = displayText.trim().isEmpty;
+                  final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
+                      ? text.placeholder!.trim()
+                      : 'Ketuk untuk edit teks';
+                  return Positioned(
+                    left: text.x * scaleX,
+                    top: text.y * scaleY,
+                    width: text.width * scaleX,
+                    height: text.height * scaleY,
+                    child: Transform.rotate(
+                      angle: text.rotation * math.pi / 180,
+                      child: Align(
+                        alignment: _parseTextAlignment(text.style.textAlign),
+                        child: Text(
+                          isEmpty ? placeholder : displayText,
+                          textAlign: _parseTextAlign(text.style.textAlign),
+                          style: text.style.toTextStyle().copyWith(
+                                fontSize: (text.style.fontSize ?? 16) * scaleY,
+                                fontStyle: isEmpty ? FontStyle.italic : null,
+                                color: isEmpty ? Colors.grey.shade500 : text.style.colorValue,
+                              ),
+                        ),
                       ),
                     ),
                   );

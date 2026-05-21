@@ -65,6 +65,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   int _activePageIndex = 0;
   String? _selectedFrameId;
   final Map<String, FramePhotoState> _photoStateByFrameId = {};
+  final Map<String, String> _editedTextById = {};
 
   bool _loading = true;
   String? _error;
@@ -229,6 +230,13 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       scaleY: scaleY,
                     ),
                   ),
+                  ...page.texts.map(
+                    (text) => _buildTextLayer(
+                      text: text,
+                      scaleX: scaleX,
+                      scaleY: scaleY,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -236,6 +244,138 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         );
       },
     );
+  }
+
+  Widget _buildTextLayer({
+    required DesignTextModel text,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    final displayText = _editedTextById[text.id] ?? text.text;
+    final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
+        ? text.placeholder!.trim()
+        : 'Ketuk untuk edit teks';
+    final isEmptyText = displayText.trim().isEmpty;
+    final textStyle = text.style.toTextStyle().copyWith(
+          fontSize: (text.style.fontSize ?? 16) * scaleY,
+        );
+
+    return Positioned(
+      left: text.x * scaleX,
+      top: text.y * scaleY,
+      width: text.width * scaleX,
+      height: text.height * scaleY,
+      child: Transform.rotate(
+        angle: text.rotation * math.pi / 180,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _openTextEditor(text),
+          child: Align(
+            alignment: _parseTextAlign(text.style.textAlign),
+            child: Text(
+              isEmptyText ? placeholder : displayText,
+              textAlign: _parseFlutterTextAlign(text.style.textAlign),
+              maxLines: null,
+              overflow: TextOverflow.visible,
+              style: isEmptyText
+                  ? textStyle.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey.shade500,
+                    )
+                  : textStyle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Alignment _parseTextAlign(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'center':
+        return Alignment.center;
+      case 'right':
+        return Alignment.centerRight;
+      default:
+        return Alignment.centerLeft;
+    }
+  }
+
+  TextAlign _parseFlutterTextAlign(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'center':
+        return TextAlign.center;
+      case 'right':
+        return TextAlign.right;
+      case 'justify':
+        return TextAlign.justify;
+      default:
+        return TextAlign.left;
+    }
+  }
+
+  Future<void> _openTextEditor(DesignTextModel text) async {
+    final controller = TextEditingController(text: _editedTextById[text.id] ?? text.text);
+    final result = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Edit Teks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                minLines: 3,
+                maxLines: 8,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Masukkan teks album',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Batal'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, ''),
+                    child: const Text('Reset ke bawaan desain'),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, controller.text),
+                    child: const Text('Simpan'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    controller.dispose();
+
+    if (!mounted || result == null) return;
+    setState(() {
+      if (result.isEmpty) {
+        _editedTextById.remove(text.id);
+      } else {
+        _editedTextById[text.id] = result;
+      }
+    });
   }
 
   Widget _buildPageThumbnails(DesignSchemaModel schema) {
@@ -438,6 +578,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           design: widget.design,
           schema: schema,
           photoStateByFrameId: _photoStateByFrameId,
+          editedTextById: _editedTextById,
         ),
       ),
     );
@@ -497,6 +638,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           productId: widget.productId,
           schema: schema,
           photoStateByFrameId: _photoStateByFrameId,
+          editedTextById: _editedTextById,
         ),
       ),
     );

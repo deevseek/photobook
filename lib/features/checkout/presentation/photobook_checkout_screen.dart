@@ -18,12 +18,14 @@ class PhotobookCheckoutScreen extends StatefulWidget {
     required this.productId,
     required this.schema,
     required this.photoStateByFrameId,
+    required this.editedTextById,
   });
 
   final PhotobookDesignModel design;
   final int productId;
   final DesignSchemaModel schema;
   final Map<String, FramePhotoState> photoStateByFrameId;
+  final Map<String, String> editedTextById;
 
   @override
   State<PhotobookCheckoutScreen> createState() => _PhotobookCheckoutScreenState();
@@ -374,6 +376,25 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
           }).toList(),
         };
       }).toList(),
+      'texts': widget.schema.pages
+          .expand((page) => page.texts)
+          .map((text) {
+            return {
+              'text_id': text.id,
+              'original_text': text.text,
+              'value': widget.editedTextById[text.id] ?? text.text,
+              'style': {
+                'font_family': text.style.fontFamily,
+                'font_size': text.style.fontSize,
+                'font_weight': text.style.fontWeight,
+                'font_style': text.style.fontStyle,
+                'text_align': text.style.textAlign,
+                'color': text.style.color,
+                'line_height': text.style.lineHeight,
+              }
+            };
+          })
+          .toList(),
     };
   }
 
