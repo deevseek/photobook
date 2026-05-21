@@ -146,6 +146,10 @@ class _PreviewPageCanvas extends StatelessWidget {
     }
   }
 
+  Color _resolveTextMaskColor(DesignTextModel text) {
+    return Colors.white;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -240,16 +244,24 @@ class _PreviewPageCanvas extends StatelessWidget {
                     height: text.height * scaleY,
                     child: Transform.rotate(
                       angle: text.rotation * math.pi / 180,
-                      child: Align(
-                        alignment: _parseTextAlignment(text.style.textAlign),
-                        child: Text(
-                          isEmpty ? '' : displayText,
-                          textAlign: _parseTextAlign(text.style.textAlign),
-                          style: text.style.toTextStyle().copyWith(
-                                fontSize: (text.style.fontSize ?? 16) * scaleY,
-                                color: text.style.colorValue,
-                              ),
-                        ),
+                      alignment: Alignment.topLeft,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: ColoredBox(color: _resolveTextMaskColor(text)),
+                          ),
+                          Align(
+                            alignment: _parseTextAlignment(text.style.textAlign),
+                            child: Text(
+                              isEmpty ? '' : displayText,
+                              textAlign: _parseTextAlign(text.style.textAlign),
+                              style: text.style.toTextStyle().copyWith(
+                                    fontSize: (text.style.fontSize ?? 16) * scaleY,
+                                    color: text.style.colorValue,
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
