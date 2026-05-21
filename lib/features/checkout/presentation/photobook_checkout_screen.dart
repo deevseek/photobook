@@ -364,7 +364,7 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
             return {
               'frame_id': frame.id,
               'photo_file_name': state?.fileName,
-              'photo_attached': state?.imageBytes != null,
+              'photo_attached': state != null,
               'photo_url': null,
               'crop': {
                 'fit': 'cover',

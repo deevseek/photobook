@@ -39,7 +39,7 @@ class PhotobookPreviewScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final page = schema.pages[index];
                 final missingFrames = page.frames
-                    .where((frame) => photoStateByFrameId[frame.id]?.imageBytes == null)
+                    .where((frame) => photoStateByFrameId[frame.id] == null)
                     .length;
 
                 return Column(
@@ -191,7 +191,7 @@ class _PreviewPageCanvas extends StatelessWidget {
                 ...page.frames.map((frame) {
                   final state = photoStateByFrameId[frame.id];
 
-                  if (state == null || state.imageBytes == null) {
+                  if (state == null) {
                     return const SizedBox.shrink();
                   }
 
@@ -215,9 +215,9 @@ class _PreviewPageCanvas extends StatelessWidget {
                             child: Transform.scale(
                               scale: state.scale,
                               child: Transform.rotate(
-                                angle: state.rotation,
+                                angle: state.rotation * math.pi / 180,
                                 child: Image.memory(
-                                  state.imageBytes!,
+                                  state.imageBytes,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
                                   height: double.infinity,

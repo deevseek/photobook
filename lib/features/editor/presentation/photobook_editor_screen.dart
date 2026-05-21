@@ -12,7 +12,7 @@ import 'photobook_preview_screen.dart';
 
 class FramePhotoState {
   final String frameId;
-  final Uint8List? imageBytes;
+  final Uint8List imageBytes;
   final String? fileName;
   final double scale;
   final Offset offset;
@@ -20,7 +20,7 @@ class FramePhotoState {
 
   const FramePhotoState({
     required this.frameId,
-    this.imageBytes,
+    required this.imageBytes,
     this.fileName,
     this.scale = 1.0,
     this.offset = Offset.zero,
@@ -460,7 +460,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final state = _photoStateByFrameId[frame.id];
-    final hasPhoto = state?.imageBytes != null;
+    final hasPhoto = state != null;
     final isActive = _selectedFrameId == frame.id;
 
     final visualWidth = frame.width * scaleX;
@@ -553,9 +553,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Widget _buildPhotoInFrame(FramePhotoState state) {
-    if (state.imageBytes == null) return const SizedBox.shrink();
     return Transform.rotate(
-      angle: state.rotation,
+      angle: state.rotation * math.pi / 180,
       child: Transform.translate(
         offset: state.offset,
         child: Transform.scale(
@@ -563,11 +562,39 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           child: SizedBox.expand(
             child: FittedBox(
               fit: BoxFit.cover,
-              child: Image.memory(state.imageBytes!),
+              child: Image.memory(state.imageBytes),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPhotoEditorCanvas({
+    required FramePhotoState state,
+    required ValueChanged<FramePhotoState> onChanged,
+  }) {
+    Offset startFocalPoint = Offset.zero;
+    Offset startOffset = state.offset;
+    double startScale = state.scale;
+
+    return GestureDetector(
+      onScaleStart: (details) {
+        startFocalPoint = details.focalPoint;
+        startOffset = state.offset;
+        startScale = state.scale;
+      },
+      onScaleUpdate: (details) {
+        final nextScale = (startScale * details.scale).clamp(0.5, 5.0);
+        final nextOffset = startOffset + (details.focalPoint - startFocalPoint);
+        onChanged(
+          state.copyWith(
+            scale: nextScale,
+            offset: nextOffset,
+          ),
+        );
+      },
+      child: _buildPhotoInFrame(state),
     );
   }
 
@@ -579,7 +606,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return null;
     final bytes = await file.readAsBytes();
-    return (baseState ?? FramePhotoState(frameId: frame.id)).copyWith(
+    final initial = baseState ?? FramePhotoState(frameId: frame.id, imageBytes: bytes);
+    return initial.copyWith(
       imageBytes: bytes,
       fileName: file.name,
       scale: 1,
@@ -590,7 +618,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   Future<void> _openFrameEditor(DesignFrameModel frame) async {
     // TODO: Use polygon clipper if frame.polygonPoints is available.
-    var draftState = _photoStateByFrameId[frame.id] ?? FramePhotoState(frameId: frame.id);
+    var draftState = _photoStateByFrameId[frame.id];
     final result = await showModalBottomSheet<FramePhotoState?>(
       context: context,
       isScrollControlled: true,
@@ -611,18 +639,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           color: Colors.black12,
-                          child: draftState.imageBytes == null
+                          child: draftState == null
                               ? const Center(child: Text('Belum ada foto'))
-                              : GestureDetector(
-                                  onScaleUpdate: (details) {
-                                    setSheetState(() {
-                                      draftState = draftState.copyWith(
-                                        scale: (draftState.scale * details.scale).clamp(0.5, 6.0),
-                                        offset: draftState.offset + details.focalPointDelta,
-                                      );
-                                    });
-                                  },
-                                  child: _buildPhotoInFrame(draftState),
+                              : _buildPhotoEditorCanvas(
+                                  state: draftState!,
+                                  onChanged: (value) => setSheetState(() => draftState = value),
                                 ),
                         ),
                       ),
@@ -636,14 +657,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                             final picked = await _pickPhotoForFrame(frame, baseState: draftState);
                             if (picked != null) setSheetState(() => draftState = picked);
                           },
-                          child: Text(draftState.imageBytes == null ? 'Pilih Foto' : 'Ganti Foto'),
+                          child: Text(draftState == null ? 'Pilih Foto' : 'Ganti Foto'),
                         ),
                         OutlinedButton(
-                          onPressed: draftState.imageBytes == null ? null : () => setSheetState(() => draftState = draftState.copyWith(scale: 1, offset: Offset.zero, rotation: 0)),
+                          onPressed: draftState == null ? null : () => setSheetState(() => draftState = draftState!.copyWith(scale: 1, offset: Offset.zero, rotation: 0)),
                           child: const Text('Reset'),
                         ),
                         OutlinedButton(
-                          onPressed: draftState.imageBytes == null ? null : () => setSheetState(() => draftState = draftState.copyWith(imageBytes: null, fileName: null)),
+                          onPressed: draftState == null ? null : () => setSheetState(() => draftState = null),
                           child: const Text('Hapus Foto'),
                         ),
                       ],
@@ -653,7 +674,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       children: [
                         TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('Batal')),
                         const Spacer(),
-                        ElevatedButton(onPressed: () => Navigator.pop(sheetContext, draftState), child: const Text('Simpan')),
+                        ElevatedButton(onPressed: draftState == null ? null : () => Navigator.pop(sheetContext, draftState), child: const Text('Simpan')),
                       ],
                     ),
                   ],
@@ -665,7 +686,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       },
     );
     if (!mounted || result == null) return;
-    setState(() => _photoStateByFrameId[frame.id] = result);
+    setState(() => _photoStateByFrameId[result.frameId] = result);
   }
 
   void _openPreview() {
@@ -683,7 +704,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     final missingFramesCount = schema.pages
         .expand((page) => page.frames)
-        .where((frame) => _photoStateByFrameId[frame.id]?.imageBytes == null)
+        .where((frame) => _photoStateByFrameId[frame.id] == null)
         .length;
 
     if (missingFramesCount > 0) {
@@ -728,7 +749,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       for (final frame in page.frames) {
         final state = _photoStateByFrameId[frame.id];
 
-        if (state == null || state.imageBytes == null) {
+        if (state == null) {
           missingFrames.add({
             'label': 'Halaman ${page.pageNumber}: ${frame.placeholder} belum diisi',
             'pageIndex': schema.pages.indexOf(page),
