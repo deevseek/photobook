@@ -470,11 +470,17 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       frame.borderRadius * scaleX,
     );
 
+    const minTapSize = 44.0;
+    final tapWidth = math.max(visualWidth, minTapSize);
+    final tapHeight = math.max(visualHeight, minTapSize);
+    final tapInsetX = (tapWidth - visualWidth) / 2;
+    final tapInsetY = (tapHeight - visualHeight) / 2;
+
     return Positioned(
-      left: frame.x * scaleX,
-      top: frame.y * scaleY,
-      width: visualWidth,
-      height: visualHeight,
+      left: (frame.x * scaleX) - tapInsetX,
+      top: (frame.y * scaleY) - tapInsetY,
+      width: tapWidth,
+      height: tapHeight,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
@@ -483,79 +489,183 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           });
           _openFrameEditor(frame);
         },
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(
-              color: isActive ? Colors.blue : Colors.white70,
-              width: isActive ? 2 : 1,
-            ),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.25),
-                      blurRadius: 8,
-                    ),
-                  ]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: radius,
-            child: hasPhoto
-                ? Transform.translate(
-                    offset: state!.offset,
-                    child: Transform.scale(
-                      scale: state.scale,
-                      child: Transform.rotate(
-                        angle: state.rotation,
-                        child: Image.memory(
-                          state.imageBytes!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                      ),
-                    ),
-                  )
-                : Container(
-                    color: Colors.white.withOpacity(0.20),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.add_a_photo_outlined),
-                          const SizedBox(height: 4),
-                          Text(
-                            frame.placeholder,
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: tapInsetX,
+              top: tapInsetY,
+              width: visualWidth,
+              height: visualHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: radius,
+                  border: Border.all(
+                    color: isActive ? Colors.blue : Colors.white70,
+                    width: isActive ? 2 : 1,
                   ),
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.25),
+                            blurRadius: 8,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: ClipRRect(
+                  borderRadius: radius,
+                  child: hasPhoto
+                      ? _buildPhotoInFrame(state!)
+                      : Container(
+                          color: Colors.white.withOpacity(0.20),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_a_photo_outlined),
+                                const SizedBox(height: 4),
+                                Text(
+                                  frame.placeholder,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            if (hasPhoto)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(12)),
+                  child: const Text('Terisi', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoInFrame(FramePhotoState state) {
+    if (state.imageBytes == null) return const SizedBox.shrink();
+    return Transform.rotate(
+      angle: state.rotation,
+      child: Transform.translate(
+        offset: state.offset,
+        child: Transform.scale(
+          scale: state.scale,
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: Image.memory(state.imageBytes!),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Future<void> _openFrameEditor(DesignFrameModel frame) async {
+  Future<FramePhotoState?> _pickPhotoForFrame(
+    DesignFrameModel frame, {
+    FramePhotoState? baseState,
+  }) async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
-
-    if (file == null) {
-      return;
-    }
-
+    if (file == null) return null;
     final bytes = await file.readAsBytes();
+    return (baseState ?? FramePhotoState(frameId: frame.id)).copyWith(
+      imageBytes: bytes,
+      fileName: file.name,
+      scale: 1,
+      offset: Offset.zero,
+      rotation: 0,
+    );
+  }
 
-    setState(() {
-      _photoStateByFrameId[frame.id] = FramePhotoState(
-        frameId: frame.id,
-        imageBytes: bytes,
-        fileName: file.name,
-      );
-    });
+  Future<void> _openFrameEditor(DesignFrameModel frame) async {
+    // TODO: Use polygon clipper if frame.polygonPoints is available.
+    var draftState = _photoStateByFrameId[frame.id] ?? FramePhotoState(frameId: frame.id);
+    final result = await showModalBottomSheet<FramePhotoState?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Edit Foto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    AspectRatio(
+                      aspectRatio: math.max(frame.width, 1) / math.max(frame.height, 1),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          color: Colors.black12,
+                          child: draftState.imageBytes == null
+                              ? const Center(child: Text('Belum ada foto'))
+                              : GestureDetector(
+                                  onScaleUpdate: (details) {
+                                    setSheetState(() {
+                                      draftState = draftState.copyWith(
+                                        scale: (draftState.scale * details.scale).clamp(0.5, 6.0),
+                                        offset: draftState.offset + details.focalPointDelta,
+                                      );
+                                    });
+                                  },
+                                  child: _buildPhotoInFrame(draftState),
+                                ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () async {
+                            final picked = await _pickPhotoForFrame(frame, baseState: draftState);
+                            if (picked != null) setSheetState(() => draftState = picked);
+                          },
+                          child: Text(draftState.imageBytes == null ? 'Pilih Foto' : 'Ganti Foto'),
+                        ),
+                        OutlinedButton(
+                          onPressed: draftState.imageBytes == null ? null : () => setSheetState(() => draftState = draftState.copyWith(scale: 1, offset: Offset.zero, rotation: 0)),
+                          child: const Text('Reset'),
+                        ),
+                        OutlinedButton(
+                          onPressed: draftState.imageBytes == null ? null : () => setSheetState(() => draftState = draftState.copyWith(imageBytes: null, fileName: null)),
+                          child: const Text('Hapus Foto'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('Batal')),
+                        const Spacer(),
+                        ElevatedButton(onPressed: () => Navigator.pop(sheetContext, draftState), child: const Text('Simpan')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (!mounted || result == null) return;
+    setState(() => _photoStateByFrameId[frame.id] = result);
   }
 
   void _openPreview() {
@@ -597,14 +707,18 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       return;
     }
 
-    final missingFrames = <String>[];
+    final missingFrames = <Map<String, dynamic>>[];
 
     for (final page in schema.pages) {
       for (final frame in page.frames) {
         final state = _photoStateByFrameId[frame.id];
 
         if (state == null || state.imageBytes == null) {
-          missingFrames.add('Halaman ${page.pageNumber}: ${frame.placeholder}');
+          missingFrames.add({
+            'label': 'Halaman ${page.pageNumber}: ${frame.placeholder} belum diisi',
+            'pageIndex': schema.pages.indexOf(page),
+            'frameId': frame.id,
+          });
         }
       }
     }
@@ -615,8 +729,23 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         builder: (_) => AlertDialog(
           title: const Text('Foto belum lengkap'),
           content: SingleChildScrollView(
-            child: Text(
-              'Lengkapi foto berikut sebelum checkout:\n\n${missingFrames.join('\n')}',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: missingFrames
+                  .map(
+                    (item) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item['label'] as String),
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _activePageIndex = item['pageIndex'] as int;
+                          _selectedFrameId = item['frameId'] as String;
+                        });
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
           ),
           actions: [
