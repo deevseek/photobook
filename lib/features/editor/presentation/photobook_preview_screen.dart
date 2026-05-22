@@ -143,6 +143,57 @@ class _PreviewPageCanvas extends StatelessWidget {
   final Map<String, FramePhotoState> photoStateByFrameId;
   final Map<String, String> editedTextById;
 
+  Widget _buildPageBackground(DesignPageModel page) {
+    String? selectedUrl;
+    String selectedSource = 'none';
+
+    if ((page.editorBackgroundUrl ?? '').isNotEmpty) {
+      selectedUrl = page.editorBackgroundUrl;
+      selectedSource = 'editor_background_url';
+    } else if ((page.cleanBackgroundUrl ?? '').isNotEmpty) {
+      selectedUrl = page.cleanBackgroundUrl;
+      selectedSource = 'clean_background_url';
+    } else if ((page.backgroundUrl ?? '').isNotEmpty) {
+      selectedUrl = page.backgroundUrl;
+      selectedSource = 'background_url';
+    } else if ((page.previewUrl ?? '').isNotEmpty) {
+      selectedUrl = page.previewUrl;
+      selectedSource = 'preview_url';
+    } else {
+      final dynamic pageDynamic = page;
+      if (pageDynamic is Map) {
+        final editorBg = pageDynamic['editor_background_url']?.toString();
+        final cleanBg = pageDynamic['clean_background_url']?.toString();
+        final background = pageDynamic['background_url']?.toString();
+        final preview = pageDynamic['preview_url']?.toString();
+
+        if ((editorBg ?? '').isNotEmpty) {
+          selectedUrl = editorBg;
+          selectedSource = 'editor_background_url';
+        } else if ((cleanBg ?? '').isNotEmpty) {
+          selectedUrl = cleanBg;
+          selectedSource = 'clean_background_url';
+        } else if ((background ?? '').isNotEmpty) {
+          selectedUrl = background;
+          selectedSource = 'background_url';
+        } else if ((preview ?? '').isNotEmpty) {
+          selectedUrl = preview;
+          selectedSource = 'preview_url';
+        }
+      }
+    }
+
+    debugPrint(
+      'PAGE BACKGROUND page=${page.pageNumber} using=$selectedSource url=${selectedUrl ?? ''}',
+    );
+
+    if ((selectedUrl ?? '').isEmpty) {
+      return Container(color: Colors.white);
+    }
+
+    return Image.network(selectedUrl!, fit: BoxFit.cover);
+  }
+
   Alignment _parseTextAlignment(String? value) {
     switch (value?.toLowerCase()) {
       case 'center':
