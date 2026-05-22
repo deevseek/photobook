@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -60,6 +61,7 @@ class PhotobookEditorScreen extends StatefulWidget {
 }
 
 class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
+  static const bool _debugTextBounds = kDebugMode;
   final _repo = PhotobookRepository();
 
   int _activePageIndex = 0;
@@ -235,6 +237,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       scaleY: scaleY,
                     ),
                   ),
+                  if (_selectedFrameId != null)
+                    _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
                 ],
               ),
             ),
@@ -282,31 +286,45 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final displayText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
-    debugPrint('TEXT RENDER id=${text.id} display=$displayText x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
+    final renderedX = text.x * scaleX;
+    final renderedY = text.y * scaleY;
+    final renderedWidth = text.width * scaleX;
+    final renderedHeight = text.height * scaleY;
     final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
         ? text.placeholder!.trim()
         : 'Ketuk untuk edit teks';
     final isEmptyText = displayText.trim().isEmpty;
-    final textStyle = text.style.toTextStyle().copyWith(
-          fontSize: (text.style.fontSize ?? 16) * scaleY,
-        );
+    final textStyle = _buildTextStyleFromSchema(
+      style: text.style,
+      renderedHeight: renderedHeight,
+      scaleY: scaleY,
+    );
+    debugPrint('TEXT RENDER id=${text.id} display=$displayText x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
+    debugPrint(
+      'TEXT STYLE id=${text.id} rawFontSize=${text.style.fontSize} resolvedFontSize=${textStyle.fontSize} '
+      'color=${textStyle.color} x=$renderedX y=$renderedY w=$renderedWidth h=$renderedHeight',
+    );
+    debugPrint('TEXT LAYER ORDER text overlay rendered after frames');
 
     return Positioned(
-      left: text.x * scaleX,
-      top: text.y * scaleY,
-      width: text.width * scaleX,
-      height: text.height * scaleY,
+      left: renderedX,
+      top: renderedY,
+      width: renderedWidth,
+      height: renderedHeight,
       child: Transform.rotate(
         angle: text.rotation * math.pi / 180,
         alignment: Alignment.topLeft,
-        child: Stack(
-          children: [
-            Align(
-              alignment: _parseTextAlign(text.style.textAlign),
-              child: Text(
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: text.editable ? () => _openTextEditor(text) : null,
+          child: Container(
+            color: Colors.transparent,
+            alignment: _parseTextAlign(text.style.textAlign),
+            decoration: _debugTextBounds ? BoxDecoration(border: Border.all(color: Colors.red, width: 0.5)) : null,
+            child: Text(
                 isEmptyText ? placeholder : displayText,
                 textAlign: _parseFlutterTextAlign(text.style.textAlign),
-                maxLines: 10,
+                maxLines: null,
                 overflow: TextOverflow.visible,
                 style: isEmptyText
                     ? textStyle.copyWith(
@@ -316,13 +334,51 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                     : textStyle,
               ),
             ),
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: text.editable ? () => _openTextEditor(text) : null,
-              ),
-            ),
-          ],
+          
+        ),
+      ),
+    );
+  }
+
+  TextStyle _buildTextStyleFromSchema({
+    required TextStyleSchema style,
+    required double renderedHeight,
+    required double scaleY,
+  }) {
+    final rawFontSize = style.fontSize;
+    final fallbackFontSize = (renderedHeight * 0.55).clamp(8.0, 96.0).toDouble();
+    final resolvedFontSize = rawFontSize != null && rawFontSize > 0 ? rawFontSize * scaleY : fallbackFontSize;
+    return style.toTextStyle().copyWith(
+          fontFamily: (style.fontFamily == null || style.fontFamily!.trim().isEmpty) ? null : style.fontFamily,
+          fontSize: resolvedFontSize,
+          color: style.colorValue ?? Colors.black,
+        );
+  }
+
+  Widget _buildSelectionOverlay({
+    required DesignPageModel page,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    DesignFrameModel? selectedFrame;
+    for (final frame in page.frames) {
+      if (frame.id == _selectedFrameId) {
+        selectedFrame = frame;
+        break;
+      }
+    }
+    if (selectedFrame == null) return const SizedBox.shrink();
+    return Positioned(
+      left: selectedFrame.x * scaleX,
+      top: selectedFrame.y * scaleY,
+      width: selectedFrame.width * scaleX,
+      height: selectedFrame.height * scaleY,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.blue, width: 2),
+            borderRadius: BorderRadius.circular(selectedFrame.borderRadius * scaleX),
+          ),
         ),
       ),
     );
