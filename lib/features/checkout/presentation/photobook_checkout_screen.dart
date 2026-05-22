@@ -358,7 +358,7 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
       'pages': widget.schema.pages.map((page) {
         return {
           'page_number': page.pageNumber,
-          'background_url': page.backgroundUrl,
+          'background_url': page.editorBackgroundUrl ?? page.cleanBackgroundUrl ?? page.backgroundUrl ?? page.previewUrl,
           'frames': page.frames.map((frame) {
             final state = widget.photoStateByFrameId[frame.id];
             return {

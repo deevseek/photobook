@@ -23,6 +23,27 @@ class PhotobookPreviewScreen extends StatelessWidget {
   final VoidCallback? onBackToEdit;
   final VoidCallback? onContinueCheckout;
 
+
+  Widget _buildPageBackground(DesignPageModel page) {
+    final selectedUrl = page.editorBackgroundUrl?.isNotEmpty == true
+        ? page.editorBackgroundUrl
+        : page.cleanBackgroundUrl?.isNotEmpty == true
+            ? page.cleanBackgroundUrl
+            : page.backgroundUrl?.isNotEmpty == true
+                ? page.backgroundUrl
+                : page.previewUrl;
+
+    if (selectedUrl == null || selectedUrl.isEmpty) {
+      return Container(color: Colors.white);
+    }
+
+    return Image.network(
+      selectedUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(color: Colors.white),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,10 +167,6 @@ class _PreviewPageCanvas extends StatelessWidget {
     }
   }
 
-  Color _resolveTextMaskColor(DesignTextModel text) {
-    return Colors.transparent;
-  }
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -183,21 +200,7 @@ class _PreviewPageCanvas extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: (page.backgroundUrl != null && page.backgroundUrl!.isNotEmpty)
-                      ? Image.network(
-                          page.backgroundUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(color: Colors.white),
-                        )
-                      : (page.previewUrl != null && page.previewUrl!.isNotEmpty)
-                          ? Image.network(
-                              page.previewUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: Colors.white),
-                            )
-                      : Container(color: Colors.white),
-                ),
+                Positioned.fill(child: _buildPageBackground(page)),
                 ...page.frames.map((frame) {
                   final state = photoStateByFrameId[frame.id];
 
@@ -253,9 +256,6 @@ class _PreviewPageCanvas extends StatelessWidget {
                       alignment: Alignment.topLeft,
                       child: Stack(
                         children: [
-                          Positioned.fill(
-                            child: ColoredBox(color: _resolveTextMaskColor(text)),
-                          ),
                           Align(
                             alignment: _parseTextAlignment(text.style.textAlign),
                             child: Text(

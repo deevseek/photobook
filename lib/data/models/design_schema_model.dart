@@ -46,6 +46,8 @@ class DesignPageModel {
   final int pageNumber;
   final String? backgroundUrl;
   final String? previewUrl;
+  final String? editorBackgroundUrl;
+  final String? cleanBackgroundUrl;
   final bool backgroundMissing;
   final List<DesignFrameModel> frames;
   final List<DesignTextModel> texts;
@@ -54,6 +56,8 @@ class DesignPageModel {
     required this.pageNumber,
     required this.backgroundUrl,
     required this.previewUrl,
+    required this.editorBackgroundUrl,
+    required this.cleanBackgroundUrl,
     required this.backgroundMissing,
     required this.frames,
     required this.texts,
@@ -68,6 +72,8 @@ class DesignPageModel {
       pageNumber: int.tryParse('${data['page_number'] ?? 0}') ?? 0,
       backgroundUrl: normalizeFileUrl(data['background_url']?.toString()),
       previewUrl: normalizeFileUrl(data['preview_url']?.toString()),
+      editorBackgroundUrl: normalizeFileUrl(data['editor_background_url']?.toString()),
+      cleanBackgroundUrl: normalizeFileUrl(data['clean_background_url']?.toString()),
       backgroundMissing:
           data['background_missing'] == true || data['background_missing'] == 1,
       frames: framesRaw is List
