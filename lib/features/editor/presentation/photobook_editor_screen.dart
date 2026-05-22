@@ -66,6 +66,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   String? _selectedFrameId;
   final Map<String, FramePhotoState> _photoStateByFrameId = {};
   final Map<String, String> _editedTextById = {};
+  final Map<String, String> _savedTextById = {};
 
   bool _loading = true;
   String? _error;
@@ -103,8 +104,16 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         return;
       }
 
+      final savedTexts = <String, String>{
+        for (final page in schema.pages)
+          for (final text in page.texts) text.id: text.text,
+      };
+
       setState(() {
         _schema = schema;
+        _savedTextById
+          ..clear()
+          ..addAll(savedTexts);
       });
     } catch (e) {
       setState(() {
@@ -210,27 +219,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               borderRadius: BorderRadius.circular(10),
               child: Stack(
                 children: [
-                  Positioned.fill(
-                    child: (page.backgroundUrl != null &&
-                            page.backgroundUrl!.isNotEmpty)
-                        ? Image.network(
-                            page.backgroundUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) {
-                              return Container(color: Colors.white);
-                            },
-                          )
-                        : (page.previewUrl != null &&
-                                page.previewUrl!.isNotEmpty)
-                        ? Image.network(
-                            page.previewUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) {
-                              return Container(color: Colors.white);
-                            },
-                          )
-                        : Container(color: Colors.white),
-                  ),
+                  Positioned.fill(child: _buildPageBackground(page)),
                   ...page.frames.map(
                     (frame) => _buildFrame(
                       context: context,
@@ -255,12 +244,44 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
+
+  Widget _buildPageBackground(DesignPageModel page) {
+    final candidates = <String?, String>{
+      page.editorBackgroundUrl: 'editor_background_url',
+      page.cleanBackgroundUrl: 'clean_background_url',
+      page.backgroundUrl: 'background_url',
+      page.previewUrl: 'preview_url',
+    };
+
+    String? selectedUrl;
+    String selectedSource = 'none';
+    for (final entry in candidates.entries) {
+      final url = entry.key;
+      if (url != null && url.isNotEmpty) {
+        selectedUrl = url;
+        selectedSource = entry.value;
+        break;
+      }
+    }
+
+    debugPrint('PAGE BACKGROUND page=${page.pageNumber} using=$selectedSource url=${selectedUrl ?? ''}');
+
+    if (selectedUrl == null) {
+      return Container(color: Colors.white);
+    }
+
+    return Image.network(
+      selectedUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(color: Colors.white),
+    );
+  }
   Widget _buildTextLayer({
     required DesignTextModel text,
     required double scaleX,
     required double scaleY,
   }) {
-    final displayText = _editedTextById[text.id] ?? text.text;
+    final displayText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
     debugPrint('TEXT RENDER id=${text.id} display=$displayText x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
     final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
         ? text.placeholder!.trim()
@@ -280,9 +301,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         alignment: Alignment.topLeft,
         child: Stack(
           children: [
-            Positioned.fill(
-              child: ColoredBox(color: _resolveTextMaskColor(text)),
-            ),
             Align(
               alignment: _parseTextAlign(text.style.textAlign),
               child: Text(
@@ -322,10 +340,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
 
-  Color _resolveTextMaskColor(DesignTextModel text) {
-    return Colors.transparent;
-  }
-
   TextAlign _parseFlutterTextAlign(String? value) {
     switch (value?.toLowerCase()) {
       case 'center':
@@ -340,8 +354,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Future<void> _openTextEditor(DesignTextModel text) async {
-    debugPrint('TEXT TAP id=${text.id} original=${text.text} edited=${_editedTextById[text.id]} x=${text.x} y=${text.y}');
-    final controller = TextEditingController(text: _editedTextById[text.id] ?? text.text);
+    debugPrint('TEXT TAP id=${text.id}');
+    final currentText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
+    final controller = TextEditingController(text: currentText);
     final result = await showModalBottomSheet<String?>(
       context: context,
       isScrollControlled: true,
@@ -395,9 +410,10 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     controller.dispose();
 
     if (!mounted || result == null) return;
-    debugPrint('TEXT SAVE: ${text.id} => $result');
+    debugPrint('TEXT SAVE id=${text.id} value=$result');
     setState(() {
-      if (result == text.text) {
+      final baselineText = _savedTextById[text.id] ?? text.text;
+      if (result == baselineText) {
         _editedTextById.remove(text.id);
       } else {
         _editedTextById[text.id] = result;
