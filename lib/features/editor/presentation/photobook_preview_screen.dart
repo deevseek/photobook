@@ -188,10 +188,22 @@ class _PreviewPageCanvas extends StatelessWidget {
     );
 
     if ((selectedUrl ?? '').isEmpty) {
-      return Container(color: Colors.white);
+      return Container(
+        color: Colors.white,
+        alignment: Alignment.center,
+        child: const Text('Background template tidak tersedia'),
+      );
     }
 
-    return Image.network(selectedUrl!, fit: BoxFit.cover);
+    return Image.network(
+      selectedUrl!,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.white,
+        alignment: Alignment.center,
+        child: const Text('Gagal memuat background template'),
+      ),
+    );
   }
 
   Alignment _parseTextAlignment(String? value) {
@@ -255,10 +267,6 @@ class _PreviewPageCanvas extends StatelessWidget {
                 ...page.frames.map((frame) {
                   final state = photoStateByFrameId[frame.id];
 
-                  if (state == null) {
-                    return const SizedBox.shrink();
-                  }
-
                   return Positioned(
                     left: frame.x * scaleX,
                     top: frame.y * scaleY,
@@ -271,24 +279,32 @@ class _PreviewPageCanvas extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Transform.translate(
-                            offset: Offset(
-                              state.offset.dx * scaleX,
-                              state.offset.dy * scaleY,
-                            ),
-                            child: Transform.scale(
-                              scale: state.scale,
-                              child: Transform.rotate(
-                                angle: state.rotation * math.pi / 180,
-                                child: Image.memory(
-                                  state.imageBytes,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
+                          if (state != null)
+                            Transform.translate(
+                              offset: Offset(
+                                state.offset.dx * scaleX,
+                                state.offset.dy * scaleY,
+                              ),
+                              child: Transform.scale(
+                                scale: state.scale,
+                                child: Transform.rotate(
+                                  angle: state.rotation * math.pi / 180,
+                                  child: Image.memory(
+                                    state.imageBytes,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          if (state == null)
+                            Container(
+                              color: Colors.black.withOpacity(0.06),
+                              child: Center(
+                                child: Icon(Icons.add_a_photo_outlined, color: Colors.black.withOpacity(0.45)),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -302,10 +318,12 @@ class _PreviewPageCanvas extends StatelessWidget {
                     top: text.y * scaleY,
                     width: text.width * scaleX,
                     height: text.height * scaleY,
-                    child: Transform.rotate(
-                      angle: text.rotation * math.pi / 180,
-                      alignment: Alignment.topLeft,
-                      child: Stack(
+                    child: Opacity(
+                      opacity: text.opacity.clamp(0.0, 1.0),
+                      child: Transform.rotate(
+                        angle: text.rotation * math.pi / 180,
+                        alignment: Alignment.topLeft,
+                        child: Stack(
                         children: [
                           Align(
                             alignment: _parseTextAlignment(text.style.textAlign),
@@ -315,11 +333,15 @@ class _PreviewPageCanvas extends StatelessWidget {
                               style: text.style.toTextStyle().copyWith(
                                     fontSize: (text.style.fontSize ?? 16) * scaleY,
                                     color: text.style.colorValue,
+                                    letterSpacing: text.style.letterSpacing != null
+                                        ? text.style.letterSpacing! * scaleY
+                                        : null,
                                   ),
                             ),
                           ),
                         ],
                       ),
+                    ),
                     ),
                   );
                 }),

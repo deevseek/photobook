@@ -170,6 +170,7 @@ class DesignTextModel {
   final double width;
   final double height;
   final double rotation;
+  final double opacity;
   final String text;
   final bool editable;
   final String? placeholder;
@@ -186,6 +187,7 @@ class DesignTextModel {
     required this.width,
     required this.height,
     required this.rotation,
+    required this.opacity,
     required this.text,
     required this.editable,
     required this.placeholder,
@@ -206,6 +208,7 @@ class DesignTextModel {
       width: DesignSchemaModel._toDouble(data['width']),
       height: DesignSchemaModel._toDouble(data['height']),
       rotation: DesignSchemaModel._toDouble(data['rotation']),
+      opacity: DesignSchemaModel._toDouble(data['opacity'], fallback: 1),
       text: data['text']?.toString() ?? '',
       editable: data['editable'] == true || data['editable'] == 1,
       placeholder: data['placeholder']?.toString(),
@@ -222,6 +225,7 @@ class TextStyleSchema {
   final String? textAlign;
   final String? color;
   final double? lineHeight;
+  final double? letterSpacing;
 
   const TextStyleSchema({
     required this.fontFamily,
@@ -231,6 +235,7 @@ class TextStyleSchema {
     required this.textAlign,
     required this.color,
     required this.lineHeight,
+    required this.letterSpacing,
   });
 
   factory TextStyleSchema.fromJson(Map<String, dynamic>? json) {
@@ -244,6 +249,7 @@ class TextStyleSchema {
       textAlign: data['text_align']?.toString(),
       color: data['color']?.toString(),
       lineHeight: double.tryParse('${data['line_height']}'),
+      letterSpacing: double.tryParse('${data['letter_spacing']}'),
     );
   }
 
@@ -257,23 +263,32 @@ class TextStyleSchema {
       fontStyle: (fontStyle?.toLowerCase() == 'italic') ? FontStyle.italic : FontStyle.normal,
       color: colorValue,
       height: lineHeight,
+      letterSpacing: letterSpacing,
     );
   }
 
   static FontWeight? _parseFontWeight(String? value) {
-    switch (value?.toLowerCase()) {
-      case 'bold':
-      case '700':
-        return FontWeight.w700;
-      case '600':
-        return FontWeight.w600;
-      case '500':
-        return FontWeight.w500;
-      case '300':
-        return FontWeight.w300;
-      default:
-        return null;
+    final normalized = value?.toLowerCase().trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    if (normalized.contains('black') || normalized.contains('heavy') || normalized == '900' || normalized == '800') {
+      return FontWeight.w800;
     }
+    if (normalized.contains('bold') || normalized == '700') {
+      return FontWeight.w700;
+    }
+    if (normalized.contains('semibold') || normalized.contains('semi-bold') || normalized.contains('demi') || normalized == '600') {
+      return FontWeight.w600;
+    }
+    if (normalized.contains('medium') || normalized == '500') {
+      return FontWeight.w500;
+    }
+    if (normalized == '400' || normalized == 'normal' || normalized == 'regular') {
+      return FontWeight.w400;
+    }
+    if (normalized == '300' || normalized.contains('light')) {
+      return FontWeight.w300;
+    }
+    return null;
   }
 
   static Color? parseColor(String? hex) {
