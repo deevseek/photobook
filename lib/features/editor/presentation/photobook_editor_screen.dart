@@ -270,14 +270,22 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     debugPrint('PAGE BACKGROUND page=${page.pageNumber} using=$selectedSource url=${selectedUrl ?? ''}');
 
-    if (selectedUrl == null) {
-      return Container(color: Colors.white);
+    if (selectedUrl == null || selectedUrl.isEmpty) {
+      return Container(
+        color: Colors.white,
+        alignment: Alignment.center,
+        child: const Text('Background template tidak tersedia'),
+      );
     }
 
     return Image.network(
       selectedUrl,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(color: Colors.white),
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.white,
+        alignment: Alignment.center,
+        child: const Text('Gagal memuat background template'),
+      ),
     );
   }
   Widget _buildTextLayer({
@@ -311,10 +319,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       top: renderedY,
       width: renderedWidth,
       height: renderedHeight,
-      child: Transform.rotate(
-        angle: text.rotation * math.pi / 180,
-        alignment: Alignment.topLeft,
-        child: GestureDetector(
+      child: Opacity(
+        opacity: text.opacity.clamp(0.0, 1.0),
+        child: Transform.rotate(
+          angle: text.rotation * math.pi / 180,
+          alignment: Alignment.topLeft,
+          child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: text.editable ? () => _openTextEditor(text) : null,
           child: Container(
@@ -337,6 +347,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               ),
             ),
           
+          ),
         ),
       ),
     );
@@ -354,6 +365,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           fontFamily: (style.fontFamily == null || style.fontFamily!.trim().isEmpty) ? null : style.fontFamily,
           fontSize: resolvedFontSize,
           color: style.colorValue ?? Colors.black,
+          letterSpacing: style.letterSpacing != null ? style.letterSpacing! * scaleY : null,
+          height: style.lineHeight,
         );
   }
 
@@ -620,16 +633,16 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                   child: hasPhoto
                       ? _buildCroppedPhoto(state!)
                       : Container(
-                          color: Colors.white.withOpacity(0.20),
+                          color: Colors.black.withOpacity(0.06),
                           child: Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.add_a_photo_outlined),
+                                Icon(Icons.add_a_photo_outlined, color: Colors.black.withOpacity(0.45)),
                                 const SizedBox(height: 4),
                                 Text(
                                   frame.placeholder,
-                                  style: const TextStyle(fontSize: 11),
+                                  style: TextStyle(fontSize: 11, color: Colors.black.withOpacity(0.55)),
                                 ),
                               ],
                             ),
