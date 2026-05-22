@@ -157,6 +157,8 @@ class DesignTextModel {
   final String id;
   final String type;
   final int pageNumber;
+  final String? sourceStory;
+  final String? sourceObjectId;
   final double x;
   final double y;
   final double width;
@@ -171,6 +173,8 @@ class DesignTextModel {
     required this.id,
     required this.type,
     required this.pageNumber,
+    required this.sourceStory,
+    required this.sourceObjectId,
     required this.x,
     required this.y,
     required this.width,
@@ -189,6 +193,8 @@ class DesignTextModel {
       id: data['id']?.toString() ?? '',
       type: data['type']?.toString() ?? 'text',
       pageNumber: int.tryParse('${data['page_number'] ?? 0}') ?? 0,
+      sourceStory: data['source_story']?.toString(),
+      sourceObjectId: data['source_object_id']?.toString(),
       x: DesignSchemaModel._toDouble(data['x']),
       y: DesignSchemaModel._toDouble(data['y']),
       width: DesignSchemaModel._toDouble(data['width']),
