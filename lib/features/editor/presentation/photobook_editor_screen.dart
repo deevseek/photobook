@@ -318,9 +318,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           behavior: HitTestBehavior.translucent,
           onTap: text.editable ? () => _openTextEditor(text) : null,
           child: Container(
-            color: Colors.transparent,
             alignment: _parseTextAlign(text.style.textAlign),
-            decoration: _debugTextBounds ? BoxDecoration(border: Border.all(color: Colors.red, width: 0.5)) : null,
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              border: _debugTextBounds ? Border.all(color: Colors.red, width: 0.5) : null,
+            ),
             child: Text(
                 isEmptyText ? placeholder : displayText,
                 textAlign: _parseFlutterTextAlign(text.style.textAlign),
