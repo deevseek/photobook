@@ -283,10 +283,12 @@ class TextStyleSchema {
 
     final cleaned = hex.replaceAll('#', '').trim();
     if (cleaned.length == 6) {
-      return Color(int.parse('FF$cleaned', radix: 16));
+      final parsed = int.tryParse('FF$cleaned', radix: 16);
+      return parsed == null ? null : Color(parsed);
     }
     if (cleaned.length == 8) {
-      return Color(int.parse(cleaned, radix: 16));
+      final parsed = int.tryParse(cleaned, radix: 16);
+      return parsed == null ? null : Color(parsed);
     }
     return null;
   }
