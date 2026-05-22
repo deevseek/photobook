@@ -211,10 +211,19 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: page.backgroundUrl != null &&
-                            page.backgroundUrl!.isNotEmpty
+                    child: (page.backgroundUrl != null &&
+                            page.backgroundUrl!.isNotEmpty)
                         ? Image.network(
                             page.backgroundUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) {
+                              return Container(color: Colors.white);
+                            },
+                          )
+                        : (page.previewUrl != null &&
+                                page.previewUrl!.isNotEmpty)
+                        ? Image.network(
+                            page.previewUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) {
                               return Container(color: Colors.white);
@@ -292,7 +301,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: () => _openTextEditor(text),
+                onTap: text.editable ? () => _openTextEditor(text) : null,
               ),
             ),
           ],
@@ -314,7 +323,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
 
   Color _resolveTextMaskColor(DesignTextModel text) {
-    return Colors.white;
+    return Colors.transparent;
   }
 
   TextAlign _parseFlutterTextAlign(String? value) {

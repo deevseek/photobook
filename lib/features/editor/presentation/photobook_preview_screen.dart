@@ -147,7 +147,7 @@ class _PreviewPageCanvas extends StatelessWidget {
   }
 
   Color _resolveTextMaskColor(DesignTextModel text) {
-    return Colors.white;
+    return Colors.transparent;
   }
 
   @override
@@ -184,12 +184,18 @@ class _PreviewPageCanvas extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: page.backgroundUrl != null && page.backgroundUrl!.isNotEmpty
+                  child: (page.backgroundUrl != null && page.backgroundUrl!.isNotEmpty)
                       ? Image.network(
                           page.backgroundUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(color: Colors.white),
                         )
+                      : (page.previewUrl != null && page.previewUrl!.isNotEmpty)
+                          ? Image.network(
+                              page.previewUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: Colors.white),
+                            )
                       : Container(color: Colors.white),
                 ),
                 ...page.frames.map((frame) {

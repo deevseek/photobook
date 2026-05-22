@@ -381,18 +381,11 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
           .expand((page) => page.texts)
           .map((text) {
             return {
-              'text_id': text.id,
-              'original_text': text.text,
-              'value': widget.editedTextById[text.id] ?? text.text,
-              'style': {
-                'font_family': text.style.fontFamily,
-                'font_size': text.style.fontSize,
-                'font_weight': text.style.fontWeight,
-                'font_style': text.style.fontStyle,
-                'text_align': text.style.textAlign,
-                'color': text.style.color,
-                'line_height': text.style.lineHeight,
-              }
+              'id': text.id,
+              'source_story': text.sourceStory,
+              'source_object_id': text.sourceObjectId,
+              'page_number': text.pageNumber,
+              'text': widget.editedTextById[text.id] ?? text.text,
             };
           })
           .toList(),
