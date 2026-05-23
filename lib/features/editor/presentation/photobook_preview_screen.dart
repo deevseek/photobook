@@ -146,6 +146,14 @@ class _PreviewPageCanvas extends StatelessWidget {
   final Map<String, FramePhotoState> photoStateByFrameId;
   final Map<String, String> editedTextById;
 
+  String _layerDisplayText(DesignLayerModel layer) {
+    final content = layer.content.trim();
+    if (content.isNotEmpty) return content;
+    final text = layer.text.trim();
+    if (text.isNotEmpty) return text;
+    return '';
+  }
+
   Widget _buildPageBackground(DesignPageModel page) {
     String? selectedUrl;
     String selectedSource = 'none';
@@ -347,7 +355,7 @@ class _PreviewPageCanvas extends StatelessWidget {
                   );
                 }),
                 ...page.layers.where((layer) => layer.type == 'text').map((layer) {
-                  final displayText = editedTextById[layer.id] ?? layer.content;
+                  final displayText = editedTextById[layer.id] ?? _layerDisplayText(layer);
                   debugPrint(
                     'TEXT VISUAL id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
                   );
@@ -356,18 +364,20 @@ class _PreviewPageCanvas extends StatelessWidget {
                     top: layer.y * scaleY,
                     width: layer.width * scaleX,
                     height: layer.height * scaleY,
-                    child: Opacity(
-                      opacity: layer.opacity.clamp(0.0, 1.0),
-                      child: Transform.rotate(
-                        angle: layer.rotation * math.pi / 180,
-                        alignment: Alignment.topLeft,
-                        child: Text(
-                          displayText,
-                          textAlign: _parseTextAlign(layer.textAlign),
-                          style: _textStyleFromLayer(layer, scaleY),
-                          maxLines: null,
-                          softWrap: false,
-                          overflow: TextOverflow.visible,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: layer.opacity.clamp(0.0, 1.0),
+                        child: Transform.rotate(
+                          angle: layer.rotation * math.pi / 180,
+                          alignment: Alignment.topLeft,
+                          child: Text(
+                            displayText,
+                            textAlign: _parseTextAlign(layer.textAlign),
+                            style: _textStyleFromLayer(layer, scaleY),
+                            maxLines: null,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
+                          ),
                         ),
                       ),
                     ),
