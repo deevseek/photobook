@@ -791,7 +791,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               child: Image.memory(state.imageBytes, fit: BoxFit.cover),
             ),
           ),
-          ),
         ),
       ),
     );
