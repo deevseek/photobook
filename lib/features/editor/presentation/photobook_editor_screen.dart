@@ -338,7 +338,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final text = layer.text!;
-    final displayText = _editedTextById[layer.id] ?? layer.content;
+    final displayText = _editedTextById[layer.id] ?? text.text;
     final renderedX = text.x * scaleX;
     final renderedY = text.y * scaleY;
     final renderedWidth = text.width * scaleX;
@@ -520,7 +520,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   void _selectTextLayer(DesignLayerModel layer) {
-    final currentText = _editedTextById[layer.id] ?? layer.content;
+    final currentText = _editedTextById[layer.id] ?? layer.text?.text ?? '';
 
     debugPrint('SELECT TEXT LAYER id=${layer.id} current=$currentText');
 
