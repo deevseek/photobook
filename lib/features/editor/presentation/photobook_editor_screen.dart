@@ -259,7 +259,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                     ),
                     ...page.effectiveTexts.map(
                       (text) => _buildTextLayer(
-                        text: text,
+                        layer: DesignLayerModel(id: text.id, type: 'text', frame: null, text: text),
                         scaleX: scaleX,
                         scaleY: scaleY,
                       ),
