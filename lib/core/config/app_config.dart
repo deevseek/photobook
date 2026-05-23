@@ -1,6 +1,9 @@
 class AppConfig {
   static const bool devBypassLogin = true;
 
+  // Isi via --dart-define=GOOGLE_WEB_CLIENT_ID=xxx.apps.googleusercontent.com
+  static const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '');
+
   // Isi token customer test dari Laravel kalau endpoint membutuhkan Bearer token.
   // Kalau produk/desain public, boleh kosong dulu.
   static const String devCustomerToken = '';
