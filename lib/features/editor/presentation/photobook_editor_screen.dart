@@ -110,12 +110,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
       final savedTexts = <String, String>{
         for (final page in schema.pages)
-          if (page.layers.isNotEmpty)
-            for (final layer in page.layers)
-              if (layer.type == 'text') layer.id: layer.content,
-        for (final page in schema.pages)
-          if (page.layers.isEmpty)
-            for (final text in page.effectiveTexts) text.id: text.text,
+          for (final layer in page.layers)
+            if (layer.type == 'text') layer.id: layer.content,
       };
 
       setState(() {
@@ -227,8 +223,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           child: SizedBox(
             width: displayWidth,
             height: displayHeight,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+            child: ClipRect(
               child: Listener(
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (event) {
@@ -237,32 +232,21 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 child: Stack(
                   children: [
                     Positioned.fill(child: _buildPageBackground(page)),
-                    if (page.layers.isNotEmpty) ...[
-                      ...photoLayers.map(
-                        (layer) => _buildPhotoLayer(
-                          context: context,
-                          layer: layer,
-                          scaleX: scaleX,
-                          scaleY: scaleY,
-                        ),
+                    ...photoLayers.map(
+                      (layer) => _buildPhotoLayer(
+                        context: context,
+                        layer: layer,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
                       ),
-                      ...textLayers.map(
-                        (layer) => _buildTextLayer(
-                          layer: layer,
-                          scaleX: scaleX,
-                          scaleY: scaleY,
-                        ),
+                    ),
+                    ...textLayers.map(
+                      (layer) => _buildTextLayer(
+                        layer: layer,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
                       ),
-                    ] else ...[
-                      ...page.effectiveFrames.map(
-                        (frame) => _buildFrame(
-                          context: context,
-                          frame: frame,
-                          scaleX: scaleX,
-                          scaleY: scaleY,
-                        ),
-                      ),
-                    ],
+                    ),
                     if (_selectedFrameId != null || _selectedTextLayerId != null)
                       IgnorePointer(
                         child: _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
@@ -295,8 +279,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   Widget _buildPageBackground(DesignPageModel page) {
     final candidates = <String?, String>{
-      page.editorBackgroundUrl: 'editor_background_url',
       page.cleanBackgroundUrl: 'clean_background_url',
+      page.editorBackgroundUrl: 'editor_background_url',
       page.backgroundUrl: 'background_url',
       page.previewUrl: 'preview_url',
     };
@@ -324,7 +308,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     return Image.network(
       selectedUrl,
-      fit: BoxFit.cover,
+      fit: BoxFit.fill,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.white,
         alignment: Alignment.center,

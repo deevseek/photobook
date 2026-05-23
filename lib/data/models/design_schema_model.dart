@@ -8,6 +8,8 @@ class DesignSchemaModel {
   final String? parser;
   final double pageWidth;
   final double pageHeight;
+  final String? pageOrientation;
+  final double? pageAspectRatio;
   final List<DesignPageModel> pages;
 
   const DesignSchemaModel({
@@ -16,6 +18,8 @@ class DesignSchemaModel {
     required this.parser,
     required this.pageWidth,
     required this.pageHeight,
+    required this.pageOrientation,
+    required this.pageAspectRatio,
     required this.pages,
   });
 
@@ -28,7 +32,9 @@ class DesignSchemaModel {
       source: data['source']?.toString(),
       parser: data['parser']?.toString(),
       pageWidth: _toDouble(data['page_width'], fallback: 2000),
-      pageHeight: _toDouble(data['page_height'], fallback: 3000),
+      pageHeight: _toDouble(data['page_height'], fallback: 2000),
+      pageOrientation: data['page_orientation']?.toString(),
+      pageAspectRatio: _toDoubleNullable(data['page_aspect_ratio']),
       pages: pagesRaw is List
           ? pagesRaw
               .whereType<Map<String, dynamic>>()
@@ -40,6 +46,11 @@ class DesignSchemaModel {
 
   static double _toDouble(dynamic value, {double fallback = 0}) =>
       double.tryParse('${value ?? fallback}') ?? fallback;
+
+  static double? _toDoubleNullable(dynamic value) {
+    if (value == null) return null;
+    return double.tryParse('$value');
+  }
 }
 
 class DesignPageModel {
@@ -103,8 +114,7 @@ class DesignPageModel {
   List<DesignFrameModel> get effectiveFrames =>
       layers.isNotEmpty ? layers.where((l) => l.frame != null).map((l) => l.frame!).toList() : frames;
 
-  List<DesignTextModel> get effectiveTexts =>
-      layers.isNotEmpty ? layers.where((l) => l.text != null).map((l) => l.text!).toList() : texts;
+  List<DesignTextModel> get effectiveTexts => texts;
 }
 
 
@@ -127,8 +137,9 @@ class DesignLayerModel {
   final String textAlign;
   final double lineHeight;
   final double letterSpacing;
+  final String? sourceStory;
+  final String? sourceObjectId;
   final DesignFrameModel? frame;
-  final DesignTextModel? text;
 
   const DesignLayerModel({
     required this.id,
@@ -148,8 +159,9 @@ class DesignLayerModel {
     this.textAlign = 'left',
     this.lineHeight = 1.2,
     this.letterSpacing = 0,
+    this.sourceStory,
+    this.sourceObjectId,
     required this.frame,
-    required this.text,
   });
 
   factory DesignLayerModel.fromJson(Map<String, dynamic>? json) {
@@ -160,8 +172,8 @@ class DesignLayerModel {
         double.tryParse('${value ?? fallback}') ?? fallback;
 
     return DesignLayerModel(
-      id: data['id']?.toString() ?? '',
-      type: type,
+      id: (data['id'] ?? '').toString(),
+      type: (data['type'] ?? '').toString(),
       content: (data['content'] ?? data['text'] ?? '').toString(),
       x: toDouble(data['x']),
       y: toDouble(data['y']),
@@ -177,8 +189,9 @@ class DesignLayerModel {
       textAlign: (data['textAlign'] ?? data['text_align'] ?? 'left').toString(),
       lineHeight: toDouble(data['lineHeight'] ?? data['line_height'], 1.2),
       letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'], 0),
+      sourceStory: data['source_story']?.toString(),
+      sourceObjectId: data['source_object_id']?.toString(),
       frame: type == 'photo' ? DesignFrameModel.fromJson(data) : null,
-      text: type == 'text' ? DesignTextModel.fromJson(data) : null,
     );
   }
 }
