@@ -117,6 +117,8 @@ class DesignLayerModel {
   final double y;
   final double width;
   final double height;
+  final double rotation;
+  final double opacity;
   final String fontFamily;
   final double fontSize;
   final String fontWeight;
@@ -136,6 +138,8 @@ class DesignLayerModel {
     this.y = 0,
     this.width = 0,
     this.height = 0,
+    this.rotation = 0,
+    this.opacity = 1,
     this.fontFamily = '',
     this.fontSize = 14,
     this.fontWeight = 'normal',
@@ -163,6 +167,8 @@ class DesignLayerModel {
       y: toDouble(data['y']),
       width: toDouble(data['width']),
       height: toDouble(data['height']),
+      rotation: toDouble(data['rotation']),
+      opacity: toDouble(data['opacity'], 1),
       fontFamily: (data['fontFamily'] ?? data['font_family'] ?? '').toString(),
       fontSize: toDouble(data['fontSize'] ?? data['font_size'], 14),
       fontWeight: (data['fontWeight'] ?? data['font_weight'] ?? 'normal').toString(),

@@ -338,20 +338,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final displayText = _editedTextById[layer.id] ?? layer.content;
-    final fontSize = layer.fontSize <= 0 ? 24.0 : layer.fontSize;
-
-    final renderedX = (layer.x * scaleX).toDouble();
-
-    // Perluas hitbox ke atas karena font IDML besar bisa overflow dari frame.
-    final renderedY =
-        math.max(0.0, (layer.y - (fontSize * 1.2)) * scaleY).toDouble();
-    final renderedWidth = (layer.width * scaleX).toDouble();
-    final renderedHeight =
-        ((layer.height + (fontSize * 1.8)) * scaleY).toDouble();
-
-    final visualOffsetY = fontSize * 1.2 * scaleY;
     final isSelected = _selectedTextLayerId == layer.id;
     final isEmptyText = displayText.trim().isEmpty;
+    final left = (layer.x * scaleX).toDouble();
+    final top = (layer.y * scaleY).toDouble();
+    final width = (layer.width * scaleX).toDouble();
+    final height = (layer.height * scaleY).toDouble();
 
     final textStyle = _textStyleFromLayer(layer, scaleY);
 
@@ -360,45 +352,40 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
 
     return Positioned(
-      left: renderedX,
-      top: renderedY,
-      width: renderedWidth,
-      height: renderedHeight,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            debugPrint('TEXT OVERLAY CLICK id=${layer.id} text=$displayText');
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: Opacity(
+        opacity: layer.opacity.clamp(0.0, 1.0),
+        child: Transform.rotate(
+          angle: layer.rotation * math.pi / 180,
+          alignment: Alignment.topLeft,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              debugPrint('TEXT CLICK id=${layer.id} content=$displayText');
             _openTextEditor(layer);
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              border: Border.all(
-                color: isSelected
-                    ? Colors.redAccent
-                    : Colors.redAccent.withOpacity(0.25),
-                width: isSelected ? 1 : 0.5,
+            child: Container(
+              alignment: _parseTextAlign(layer.textAlign),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                border: isSelected
+                    ? Border.all(color: Colors.redAccent, width: 1)
+                    : null,
               ),
-            ),
-            alignment: _parseTextAlign(layer.textAlign),
-            child: Transform.translate(
-              offset: Offset(0, visualOffsetY),
-              child: SizedBox(
-                width: layer.width * scaleX,
-                height: layer.height * scaleY,
-                child: Text(
-                  isEmptyText ? 'Ketuk untuk edit teks' : displayText,
-                  style: isEmptyText
-                      ? textStyle.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey.shade500,
-                        )
-                      : textStyle,
-                  textAlign: _parseFlutterTextAlign(layer.textAlign),
-                  maxLines: null,
-                  overflow: TextOverflow.visible,
-                ),
+              child: Text(
+                isEmptyText ? 'Ketuk untuk edit teks' : displayText,
+                style: isEmptyText
+                    ? textStyle.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade500,
+                      )
+                    : textStyle,
+                textAlign: _parseFlutterTextAlign(layer.textAlign),
+                maxLines: null,
+                overflow: TextOverflow.visible,
               ),
             ),
           ),
@@ -414,12 +401,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     double? height;
     if (layer.lineHeight > 10 && rawFontSize > 0) {
       height = layer.lineHeight / rawFontSize;
-    } else if (layer.lineHeight > 0) {
+    } else if (layer.lineHeight > 0 && layer.lineHeight <= 5) {
       height = layer.lineHeight;
     }
 
-    final tracking = layer.letterSpacing;
-    final flutterLetterSpacing = tracking / 1000 * scaledFontSize;
+    final flutterLetterSpacing = layer.letterSpacing / 1000 * scaledFontSize;
 
     return TextStyle(
       fontFamily: layer.fontFamily.trim().isEmpty ? null : layer.fontFamily,
@@ -476,10 +462,13 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     for (final frame in page.effectiveFrames) {
       if (frame.id == _selectedFrameId) selectedFrame = frame;
     }
-    final selectedTextLayer = page.layers
-        .where((layer) => layer.type == 'text' && layer.id == _selectedTextLayerId)
-        .cast<DesignLayerModel?>()
-        .firstWhere((layer) => layer != null, orElse: () => null);
+    DesignLayerModel? selectedTextLayer;
+    for (final layer in page.layers) {
+      if (layer.type == 'text' && layer.id == _selectedTextLayerId) {
+        selectedTextLayer = layer;
+        break;
+      }
+    }
 
     return Stack(
       children: [
