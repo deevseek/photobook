@@ -108,7 +108,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
       final savedTexts = <String, String>{
         for (final page in schema.pages)
-          for (final text in page.texts) text.id: text.text,
+          for (final text in page.effectiveTexts) text.id: text.text,
       };
 
       setState(() {
@@ -222,7 +222,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               child: Stack(
                 children: [
                   Positioned.fill(child: _buildPageBackground(page)),
-                  ...page.frames.map(
+                  ...page.effectiveFrames.map(
                     (frame) => _buildFrame(
                       context: context,
                       frame: frame,
@@ -230,7 +230,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       scaleY: scaleY,
                     ),
                   ),
-                  ...page.texts.map(
+                  ...page.effectiveTexts.map(
                     (text) => _buildTextLayer(
                       text: text,
                       scaleX: scaleX,
@@ -361,12 +361,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     final rawFontSize = style.fontSize;
     final fallbackFontSize = (renderedHeight * 0.55).clamp(8.0, 96.0).toDouble();
     final resolvedFontSize = rawFontSize != null && rawFontSize > 0 ? rawFontSize * scaleY : fallbackFontSize;
-    return style.toTextStyle().copyWith(
+    return style.toTextStyle(scaledFontSize: resolvedFontSize).copyWith(
           fontFamily: (style.fontFamily == null || style.fontFamily!.trim().isEmpty) ? null : style.fontFamily,
-          fontSize: resolvedFontSize,
           color: style.colorValue ?? Colors.black,
-          letterSpacing: style.letterSpacing != null ? style.letterSpacing! * scaleY : null,
-          height: style.lineHeight,
         );
   }
 
@@ -376,7 +373,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     DesignFrameModel? selectedFrame;
-    for (final frame in page.frames) {
+    for (final frame in page.effectiveFrames) {
       if (frame.id == _selectedFrameId) {
         selectedFrame = frame;
         break;
@@ -817,7 +814,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
 
     final missingFramesCount = schema.pages
-        .expand((page) => page.frames)
+        .expand((page) => page.effectiveFrames)
         .where((frame) => _photoStateByFrameId[frame.id] == null)
         .length;
 
@@ -860,7 +857,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     final missingFrames = <Map<String, dynamic>>[];
 
     for (final page in schema.pages) {
-      for (final frame in page.frames) {
+      for (final frame in page.effectiveFrames) {
         final state = _photoStateByFrameId[frame.id];
 
         if (state == null) {
