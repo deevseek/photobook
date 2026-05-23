@@ -242,7 +242,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       ),
                     ),
                     ...textLayers.map(
-                      (layer) => _buildTextLayer(
+                      (layer) => _buildTextLayerVisual(
+                        layer: layer,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
+                      ),
+                    ),
+                    ...textLayers.map(
+                      (layer) => _buildTextLayerHitbox(
                         layer: layer,
                         scaleX: scaleX,
                         scaleY: scaleY,
@@ -317,13 +324,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       ),
     );
   }
-  Widget _buildTextLayer({
+  Widget _buildTextLayerVisual({
     required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
   }) {
     final displayText = _editedTextById[layer.id] ?? layer.content;
-    final isSelected = _selectedTextLayerId == layer.id;
     final left = (layer.x * scaleX).toDouble();
     final top = (layer.y * scaleY).toDouble();
     final width = (layer.width * scaleX).toDouble();
@@ -332,7 +338,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     final textStyle = _textStyleFromLayer(layer, scaleY);
 
     debugPrint(
-      'TEXT RENDER id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
+      'TEXT VISUAL id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
     );
 
     return Positioned(
@@ -340,35 +346,44 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       top: top,
       width: width,
       height: height,
-      child: Opacity(
-        opacity: layer.opacity.clamp(0.0, 1.0),
-        child: Transform.rotate(
-          angle: layer.rotation * math.pi / 180,
-          alignment: Alignment.topLeft,
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () {
-              debugPrint('TEXT CLICK id=${layer.id} content=$displayText');
-            _openTextEditor(layer);
-          },
-            child: Container(
-              alignment: _parseTextAlignment(layer.textAlign),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: isSelected
-                    ? Border.all(color: Colors.redAccent, width: 1)
-                    : null,
-              ),
-              child: Text(
-                displayText,
-                style: textStyle,
-                textAlign: _parseFlutterTextAlign(layer.textAlign),
-                maxLines: null,
-                overflow: TextOverflow.visible,
-              ),
+      child: IgnorePointer(
+        child: Opacity(
+          opacity: layer.opacity.clamp(0.0, 1.0),
+          child: Transform.rotate(
+            angle: layer.rotation * math.pi / 180,
+            alignment: Alignment.topLeft,
+            child: Text(
+              displayText,
+              style: textStyle,
+              textAlign: _parseFlutterTextAlign(layer.textAlign),
+              maxLines: null,
+              softWrap: false,
+              overflow: TextOverflow.visible,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextLayerHitbox({
+    required DesignLayerModel layer,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    return Positioned(
+      left: layer.x * scaleX,
+      top: layer.y * scaleY,
+      width: layer.width * scaleX,
+      height: layer.height * scaleY,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          final displayText = _editedTextById[layer.id] ?? layer.content;
+          debugPrint('TEXT CLICK id=${layer.id} content=$displayText');
+          _openTextEditor(layer);
+        },
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -483,18 +498,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       ],
     );
   }
-
-  Alignment _parseTextAlignment(String? value) {
-    switch (value?.toLowerCase()) {
-      case 'center':
-        return Alignment.center;
-      case 'right':
-        return Alignment.centerRight;
-      default:
-        return Alignment.centerLeft;
-    }
-  }
-
 
   TextAlign _parseFlutterTextAlign(String? value) {
     switch (value?.toLowerCase()) {
