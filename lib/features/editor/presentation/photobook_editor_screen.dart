@@ -386,15 +386,10 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               child: Container(
                 width: renderedWidth,
                 height: renderedHeight,
-                color: Colors.transparent,
                 alignment: _parseTextAlign(text.style.textAlign),
                 decoration: BoxDecoration(
-                  border: (_debugTextBounds || _selectedTextLayerId == layer.id)
-                      ? Border.all(
-                          color: _selectedTextLayerId == layer.id ? Colors.blueAccent : Colors.red,
-                          width: _selectedTextLayerId == layer.id ? 1.5 : 0.5,
-                        )
-                      : null,
+                  color: Colors.transparent,
+                  border: _selectedTextLayerId == layer.id ? Border.all(color: Colors.redAccent, width: 1) : null,
                 ),
                 child: Text(
                   isEmptyText ? placeholder : displayText,
