@@ -475,72 +475,48 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   Future<void> _openTextEditor(DesignTextModel text) async {
     final currentText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
-    print('TEXT LAYER TAP id=${text.id} content=$currentText');
-    debugPrint('TEXT TAP id=${text.id}');
+    print('OPEN TEXT EDITOR id=${text.id}');
     final controller = TextEditingController(text: currentText);
-    final result = await showModalBottomSheet<String?>(
+
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+
+    final result = await showDialog<String>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Teks'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: null,
+            decoration: const InputDecoration(
+              hintText: 'Masukkan teks',
+              border: OutlineInputBorder(),
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Edit Teks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                minLines: 3,
-                maxLines: 8,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Masukkan teks album',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Batal'),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, text.text),
-                    child: const Text('Reset ke bawaan desain'),
-                  ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context, controller.text),
-                    child: const Text('Simpan'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+              child: const Text('Simpan'),
+            ),
+          ],
         );
       },
     );
     controller.dispose();
 
     if (!mounted || result == null) return;
-    debugPrint('TEXT SAVE id=${text.id} value=$result');
+    print('SAVE TEXT id=${text.id} value=$result');
     setState(() {
-      final baselineText = _savedTextById[text.id] ?? text.text;
-      if (result == baselineText) {
-        _editedTextById.remove(text.id);
-      } else {
-        _editedTextById[text.id] = result;
-      }
+      _editedTextById[text.id] = result;
       _selectedFrameId = null;
-      debugPrint('EDITED TEXT MAP: $_editedTextById');
     });
   }
 
