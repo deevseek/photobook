@@ -206,6 +206,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   Widget _buildCanvas(BuildContext context, DesignSchemaModel schema) {
     final page = schema.pages[_activePageIndex];
+    final photoLayers = page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).toList();
+    final textLayers = page.layers.where((layer) => layer.type == 'text' && layer.text != null).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -229,50 +231,73 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             height: displayHeight,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Stack(
-                children: [
-                  Positioned.fill(child: _buildPageBackground(page)),
-                  if (page.layers.isNotEmpty) ...[
-                    ...page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map(
-                      (layer) => _buildFrame(
-                        context: context,
-                        frame: layer.frame!,
-                        scaleX: scaleX,
-                        scaleY: scaleY,
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (event) {
+                  debugPrint('CANVAS POINTER DOWN local=${event.localPosition}');
+                },
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: _buildPageBackground(page)),
+                    if (page.layers.isNotEmpty) ...[
+                      ...photoLayers.map(
+                        (layer) => _buildPhotoLayer(
+                          context: context,
+                          layer: layer,
+                          scaleX: scaleX,
+                          scaleY: scaleY,
+                        ),
                       ),
-                    ),
-                    ...page.layers.where((layer) => layer.type == 'text' && layer.text != null).map(
-                      (layer) => _buildTextLayer(
-                        layer: layer,
-                        scaleX: scaleX,
-                        scaleY: scaleY,
+                      ...textLayers.map(
+                        (layer) => _buildTextLayer(
+                          layer: layer,
+                          scaleX: scaleX,
+                          scaleY: scaleY,
+                        ),
                       ),
-                    ),
-                  ] else ...[
-                    ...page.effectiveFrames.map(
-                      (frame) => _buildFrame(
-                        context: context,
-                        frame: frame,
-                        scaleX: scaleX,
-                        scaleY: scaleY,
+                    ] else ...[
+                      ...page.effectiveFrames.map(
+                        (frame) => _buildFrame(
+                          context: context,
+                          frame: frame,
+                          scaleX: scaleX,
+                          scaleY: scaleY,
+                        ),
                       ),
-                    ),
-                    ...page.effectiveTexts.map(
-                      (text) => _buildTextLayer(
-                        layer: DesignLayerModel(id: text.id, type: 'text', frame: null, text: text),
-                        scaleX: scaleX,
-                        scaleY: scaleY,
+                      ...page.effectiveTexts.map(
+                        (text) => _buildTextLayer(
+                          layer: DesignLayerModel(id: text.id, type: 'text', frame: null, text: text),
+                          scaleX: scaleX,
+                          scaleY: scaleY,
+                        ),
                       ),
-                    ),
+                    ],
+                    if (_selectedFrameId != null || _selectedTextId != null)
+                      IgnorePointer(
+                        child: _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
+                      ),
                   ],
-                  if (_selectedFrameId != null || _selectedTextId != null)
-                    _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
-                ],
+                ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPhotoLayer({
+    required BuildContext context,
+    required DesignLayerModel layer,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    return _buildFrame(
+      context: context,
+      frame: layer.frame!,
+      scaleX: scaleX,
+      scaleY: scaleY,
+      layerId: layer.id,
     );
   }
 
@@ -355,6 +380,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           alignment: Alignment.topLeft,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onTapDown: (_) {
+              debugPrint('TEXT LAYER TAP DOWN id=${layer.id} content=$displayText');
+            },
             onTap: text.editable
                 ? () {
                     debugPrint('TEXT LAYER TAP id=${layer.id} content=$displayText');
@@ -652,6 +680,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required DesignFrameModel frame,
     required double scaleX,
     required double scaleY,
+    String? layerId,
   }) {
     final state = _photoStateByFrameId[frame.id];
     final hasPhoto = state != null;
@@ -678,6 +707,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
           onTap: () {
+            debugPrint('PHOTO LAYER TAP id=${layerId ?? frame.id}');
             setState(() {
               _selectedFrameId = frame.id;
               _selectedTextId = null;
