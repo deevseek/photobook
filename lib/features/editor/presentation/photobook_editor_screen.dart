@@ -340,12 +340,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     final displayText = _editedTextById[layer.id] ?? layer.content;
     final fontSize = layer.fontSize <= 0 ? 24.0 : layer.fontSize;
 
-    final renderedX = layer.x * scaleX;
+    final renderedX = (layer.x * scaleX).toDouble();
 
     // Perluas hitbox ke atas karena font IDML besar bisa overflow dari frame.
-    final renderedY = math.max(0, (layer.y - (fontSize * 1.2)) * scaleY);
-    final renderedWidth = layer.width * scaleX;
-    final renderedHeight = (layer.height + (fontSize * 1.8)) * scaleY;
+    final renderedY =
+        math.max(0.0, (layer.y - (fontSize * 1.2)) * scaleY).toDouble();
+    final renderedWidth = (layer.width * scaleX).toDouble();
+    final renderedHeight =
+        ((layer.height + (fontSize * 1.8)) * scaleY).toDouble();
 
     final visualOffsetY = fontSize * 1.2 * scaleY;
     final isSelected = _selectedTextLayerId == layer.id;
