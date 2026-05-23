@@ -25,10 +25,10 @@ class PhotobookPreviewScreen extends StatelessWidget {
 
 
   Widget _buildPageBackground(DesignPageModel page) {
-    final selectedUrl = page.editorBackgroundUrl?.isNotEmpty == true
-        ? page.editorBackgroundUrl
-        : page.cleanBackgroundUrl?.isNotEmpty == true
-            ? page.cleanBackgroundUrl
+    final selectedUrl = page.cleanBackgroundUrl?.isNotEmpty == true
+        ? page.cleanBackgroundUrl
+        : page.editorBackgroundUrl?.isNotEmpty == true
+            ? page.editorBackgroundUrl
             : page.backgroundUrl?.isNotEmpty == true
                 ? page.backgroundUrl
                 : page.previewUrl;
@@ -39,7 +39,7 @@ class PhotobookPreviewScreen extends StatelessWidget {
 
     return Image.network(
       selectedUrl,
-      fit: BoxFit.cover,
+      fit: BoxFit.fill,
       errorBuilder: (_, __, ___) => Container(color: Colors.white),
     );
   }
@@ -150,12 +150,12 @@ class _PreviewPageCanvas extends StatelessWidget {
     String? selectedUrl;
     String selectedSource = 'none';
 
-    if ((page.editorBackgroundUrl ?? '').isNotEmpty) {
-      selectedUrl = page.editorBackgroundUrl;
-      selectedSource = 'editor_background_url';
-    } else if ((page.cleanBackgroundUrl ?? '').isNotEmpty) {
+    if ((page.cleanBackgroundUrl ?? '').isNotEmpty) {
       selectedUrl = page.cleanBackgroundUrl;
       selectedSource = 'clean_background_url';
+    } else if ((page.editorBackgroundUrl ?? '').isNotEmpty) {
+      selectedUrl = page.editorBackgroundUrl;
+      selectedSource = 'editor_background_url';
     } else if ((page.backgroundUrl ?? '').isNotEmpty) {
       selectedUrl = page.backgroundUrl;
       selectedSource = 'background_url';
@@ -200,7 +200,7 @@ class _PreviewPageCanvas extends StatelessWidget {
 
     return Image.network(
       selectedUrl!,
-      fit: BoxFit.cover,
+      fit: BoxFit.fill,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.white,
         alignment: Alignment.center,
@@ -233,6 +233,56 @@ class _PreviewPageCanvas extends StatelessWidget {
     }
   }
 
+  TextStyle _textStyleFromLayer(DesignLayerModel layer, double scaleY) {
+    final rawFontSize = layer.fontSize <= 0 ? 24.0 : layer.fontSize;
+    final scaledFontSize = rawFontSize * scaleY;
+    double? height;
+
+    if (layer.lineHeight > 10 && rawFontSize > 0) {
+      height = layer.lineHeight / rawFontSize;
+    } else if (layer.lineHeight > 0 && layer.lineHeight <= 5) {
+      height = layer.lineHeight;
+    }
+
+    return TextStyle(
+      fontFamily: layer.fontFamily.trim().isEmpty ? null : layer.fontFamily,
+      fontSize: scaledFontSize,
+      fontWeight: _parseFontWeight(layer.fontWeight),
+      fontStyle: layer.fontStyle.toLowerCase().contains('italic')
+          ? FontStyle.italic
+          : FontStyle.normal,
+      color: _parseHexColor(layer.color),
+      height: height,
+      letterSpacing: layer.letterSpacing / 1000 * scaledFontSize,
+    );
+  }
+
+  FontWeight _parseFontWeight(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'light':
+        return FontWeight.w300;
+      case 'medium':
+        return FontWeight.w500;
+      case 'semibold':
+        return FontWeight.w600;
+      case 'bold':
+        return FontWeight.w700;
+      case 'heavy':
+        return FontWeight.w900;
+      default:
+        return FontWeight.w400;
+    }
+  }
+
+  Color _parseHexColor(String? value) {
+    final raw = (value ?? '#000000').replaceAll('#', '').trim();
+    try {
+      if (raw.length == 6) return Color(int.parse('FF$raw', radix: 16));
+      if (raw.length == 8) return Color(int.parse(raw, radix: 16));
+    } catch (_) {}
+    return Colors.black;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -240,8 +290,10 @@ class _PreviewPageCanvas extends StatelessWidget {
         final schemaWidth = schema.pageWidth.toDouble();
         final schemaHeight = schema.pageHeight.toDouble();
 
-        final availableWidth = constraints.maxWidth;
-        final scale = availableWidth / schemaWidth;
+        final scale = math.min(
+          constraints.maxWidth / schemaWidth,
+          constraints.maxHeight / schemaHeight,
+        );
 
         final displayWidth = schemaWidth * scale;
         final displayHeight = schemaHeight * scale;
@@ -250,27 +302,15 @@ class _PreviewPageCanvas extends StatelessWidget {
         final scaleY = displayHeight / schemaHeight;
 
         return Center(
-          child: Container(
+          child: SizedBox(
             width: displayWidth,
             height: displayHeight,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  blurRadius: 10,
-                  color: Colors.black12,
-                ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
+            child: ClipRect(
+              child: Stack(
               children: [
                 Positioned.fill(child: _buildPageBackground(page)),
-                ...(page.layers.isNotEmpty
-                        ? page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) => layer.frame!)
-                        : page.effectiveFrames)
-                    .map((frame) {
+                ...page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) {
+                  final frame = layer.frame!;
                   final state = photoStateByFrameId[frame.id];
 
                   return Positioned(
@@ -316,39 +356,28 @@ class _PreviewPageCanvas extends StatelessWidget {
                     ),
                   );
                 }),
-                ...(page.layers.isNotEmpty
-                        ? page.layers.where((layer) => layer.type == 'text' && layer.text != null).map((layer) => layer.text!)
-                        : page.effectiveTexts)
-                    .map((text) {
-                  final displayText = editedTextById[text.id] ?? text.text;
+                ...page.layers.where((layer) => layer.type == 'text').map((layer) {
+                  final displayText = editedTextById[layer.id] ?? layer.content;
                   final isEmpty = displayText.trim().isEmpty;
                   return Positioned(
-                    left: text.x * scaleX,
-                    top: text.y * scaleY,
-                    width: text.width * scaleX,
-                    height: text.height * scaleY,
+                    left: layer.x * scaleX,
+                    top: layer.y * scaleY,
+                    width: layer.width * scaleX,
+                    height: layer.height * scaleY,
                     child: Opacity(
-                      opacity: text.opacity.clamp(0.0, 1.0),
+                      opacity: layer.opacity.clamp(0.0, 1.0),
                       child: Transform.rotate(
-                        angle: text.rotation * math.pi / 180,
+                        angle: layer.rotation * math.pi / 180,
                         alignment: Alignment.topLeft,
-                        child: Stack(
-                        children: [
-                          Align(
-                            alignment: _parseTextAlignment(text.style.textAlign),
-                            child: Text(
-                              isEmpty ? '' : displayText,
-                              textAlign: _parseTextAlign(text.style.textAlign),
-                              style: text.style.toTextStyle(
-                                scaledFontSize: (text.style.fontSize ?? 16) * scaleY,
-                              ).copyWith(
-                                color: text.style.colorValue,
-                              ),
-                            ),
+                        child: Align(
+                          alignment: _parseTextAlignment(layer.textAlign),
+                          child: Text(
+                            isEmpty ? '' : displayText,
+                            textAlign: _parseTextAlign(layer.textAlign),
+                            style: _textStyleFromLayer(layer, scaleY),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
                     ),
                   );
                 }),
