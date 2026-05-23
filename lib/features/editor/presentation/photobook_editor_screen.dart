@@ -233,6 +233,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (event) {
                   debugPrint('CANVAS POINTER DOWN local=${event.localPosition}');
+                  _handleCanvasPointerDown(event.localPosition, schema, scaleX, scaleY);
                 },
                 child: Stack(
                   children: [
@@ -275,6 +276,51 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         );
       },
     );
+  }
+
+  void _handleCanvasPointerDown(
+    Offset localPosition,
+    DesignSchemaModel schema,
+    double scaleX,
+    double scaleY,
+  ) {
+    final page = schema.pages[_activePageIndex];
+
+    final schemaX = localPosition.dx / scaleX;
+    final schemaY = localPosition.dy / scaleY;
+
+    debugPrint('CANVAS HIT TEST schema=($schemaX, $schemaY)');
+
+    final textLayers = page.layers
+        .where((layer) => layer.type == 'text' && layer.text != null)
+        .toList()
+        .reversed;
+
+    for (final layer in textLayers) {
+      final text = layer.text!;
+      if (!text.editable) continue;
+      final fontSize = (text.style.fontSize != null && text.style.fontSize! > 0) ? text.style.fontSize! : 24.0;
+
+      final left = text.x;
+      final top = text.y - (fontSize * 1.2);
+      final width = text.width;
+      final height = text.height + (fontSize * 1.6);
+
+      final rect = Rect.fromLTWH(left, top, width, height);
+
+      debugPrint(
+        'CHECK TEXT HIT id=${layer.id} rect=$rect point=($schemaX,$schemaY)',
+      );
+
+      if (rect.contains(Offset(schemaX, schemaY))) {
+        final displayText = _editedTextById[layer.id] ?? text.text;
+        debugPrint('CANVAS TEXT HIT id=${layer.id} content=$displayText');
+        _openTextEditor(layer);
+        return;
+      }
+    }
+
+    debugPrint('CANVAS HIT EMPTY');
   }
 
   Widget _buildPhotoLayer({
@@ -524,6 +570,77 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       _selectedFrameId = null;
       _inlineDraftText = currentText;
     });
+
+    _openTextEditor(layer);
+  }
+
+  Future<void> _openTextEditor(DesignLayerModel layer) async {
+    final currentText = _editedTextById[layer.id] ?? layer.text?.text ?? '';
+    final controller = TextEditingController(text: currentText);
+
+    debugPrint('OPEN TEXT EDITOR id=${layer.id} current=$currentText');
+
+    if (!mounted) return;
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Edit Teks',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLines: null,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Masukkan teks',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Batal'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext, controller.text),
+                    child: const Text('Simpan'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (result == null) return;
+
+    setState(() {
+      _editedTextById[layer.id] = result;
+      _selectedTextLayerId = layer.id;
+      _selectedFrameId = null;
+    });
+
+    debugPrint('SAVE TEXT id=${layer.id} value=$result');
   }
 
   Widget _buildInlineTextEditor(DesignSchemaModel schema) {
