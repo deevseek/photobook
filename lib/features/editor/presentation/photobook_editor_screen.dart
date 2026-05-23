@@ -66,6 +66,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   int _activePageIndex = 0;
   String? _selectedFrameId;
+  String? _selectedTextId;
   final Map<String, FramePhotoState> _photoStateByFrameId = {};
   final Map<String, String> _editedTextById = {};
   final Map<String, String> _savedTextById = {};
@@ -108,7 +109,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
       final savedTexts = <String, String>{
         for (final page in schema.pages)
-          for (final text in page.effectiveTexts) text.id: text.text,
+          if (page.layers.isNotEmpty)
+            for (final layer in page.layers)
+              if (layer.type == 'text' && layer.text != null) layer.text!.id: layer.text!.text,
+        for (final page in schema.pages)
+          if (page.layers.isEmpty)
+            for (final text in page.effectiveTexts) text.id: text.text,
       };
 
       setState(() {
@@ -222,22 +228,40 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               child: Stack(
                 children: [
                   Positioned.fill(child: _buildPageBackground(page)),
-                  ...page.effectiveFrames.map(
-                    (frame) => _buildFrame(
-                      context: context,
-                      frame: frame,
-                      scaleX: scaleX,
-                      scaleY: scaleY,
+                  if (page.layers.isNotEmpty) ...[
+                    ...page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map(
+                      (layer) => _buildFrame(
+                        context: context,
+                        frame: layer.frame!,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
+                      ),
                     ),
-                  ),
-                  ...page.effectiveTexts.map(
-                    (text) => _buildTextLayer(
-                      text: text,
-                      scaleX: scaleX,
-                      scaleY: scaleY,
+                    ...page.layers.where((layer) => layer.type == 'text' && layer.text != null).map(
+                      (layer) => _buildTextLayer(
+                        text: layer.text!,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
+                      ),
                     ),
-                  ),
-                  if (_selectedFrameId != null)
+                  ] else ...[
+                    ...page.effectiveFrames.map(
+                      (frame) => _buildFrame(
+                        context: context,
+                        frame: frame,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
+                      ),
+                    ),
+                    ...page.effectiveTexts.map(
+                      (text) => _buildTextLayer(
+                        text: text,
+                        scaleX: scaleX,
+                        scaleY: scaleY,
+                      ),
+                    ),
+                  ],
+                  if (_selectedFrameId != null || _selectedTextId != null)
                     _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
                 ],
               ),
@@ -325,15 +349,23 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           angle: text.rotation * math.pi / 180,
           alignment: Alignment.topLeft,
           child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: text.editable ? () => _openTextEditor(text) : null,
-          child: Container(
-            alignment: _parseTextAlign(text.style.textAlign),
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              border: _debugTextBounds ? Border.all(color: Colors.red, width: 0.5) : null,
-            ),
-            child: Text(
+            behavior: HitTestBehavior.translucent,
+            onTap: text.editable
+                ? () {
+                    setState(() {
+                      _selectedTextId = text.id;
+                      _selectedFrameId = null;
+                    });
+                    _openTextEditor(text);
+                  }
+                : null,
+            child: Container(
+              alignment: _parseTextAlign(text.style.textAlign),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                border: _debugTextBounds ? Border.all(color: Colors.red, width: 0.5) : null,
+              ),
+              child: Text(
                 isEmptyText ? placeholder : displayText,
                 textAlign: _parseFlutterTextAlign(text.style.textAlign),
                 maxLines: null,
@@ -344,9 +376,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                         color: Colors.grey.shade500,
                       )
                     : textStyle,
-              ),
             ),
-          
+          ),
           ),
         ),
       ),
@@ -374,25 +405,46 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }) {
     DesignFrameModel? selectedFrame;
     for (final frame in page.effectiveFrames) {
-      if (frame.id == _selectedFrameId) {
-        selectedFrame = frame;
-        break;
-      }
+      if (frame.id == _selectedFrameId) selectedFrame = frame;
     }
-    if (selectedFrame == null) return const SizedBox.shrink();
-    return Positioned(
-      left: selectedFrame.x * scaleX,
-      top: selectedFrame.y * scaleY,
-      width: selectedFrame.width * scaleX,
-      height: selectedFrame.height * scaleY,
-      child: IgnorePointer(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.blue, width: 2),
-            borderRadius: BorderRadius.circular(selectedFrame.borderRadius * scaleX),
+    final selectedText = page.layers
+        .where((layer) => layer.type == 'text' && layer.text != null)
+        .map((layer) => layer.text!)
+        .cast<DesignTextModel?>()
+        .firstWhere((text) => text?.id == _selectedTextId, orElse: () => null);
+
+    return Stack(
+      children: [
+        if (selectedFrame != null)
+          Positioned(
+            left: selectedFrame.x * scaleX,
+            top: selectedFrame.y * scaleY,
+            width: selectedFrame.width * scaleX,
+            height: selectedFrame.height * scaleY,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.blue, width: 2),
+                  borderRadius: BorderRadius.circular(selectedFrame.borderRadius * scaleX),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        if (selectedText != null)
+          Positioned(
+            left: selectedText.x * scaleX,
+            top: selectedText.y * scaleY,
+            width: selectedText.width * scaleX,
+            height: selectedText.height * scaleY,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.blueAccent, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -422,8 +474,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Future<void> _openTextEditor(DesignTextModel text) async {
-    debugPrint('TEXT TAP id=${text.id}');
     final currentText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
+    print('TEXT LAYER TAP id=${text.id} content=$currentText');
+    debugPrint('TEXT TAP id=${text.id}');
     final controller = TextEditingController(text: currentText);
     final result = await showModalBottomSheet<String?>(
       context: context,
@@ -486,6 +539,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       } else {
         _editedTextById[text.id] = result;
       }
+      _selectedFrameId = null;
       debugPrint('EDITED TEXT MAP: $_editedTextById');
     });
   }
@@ -595,11 +649,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       height: tapHeight,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onTap: () {
-          setState(() {
-            _selectedFrameId = frame.id;
-          });
-          _openFrameEditor(frame);
+          onTap: () {
+            setState(() {
+              _selectedFrameId = frame.id;
+              _selectedTextId = null;
+            });
+            _openFrameEditor(frame);
         },
         child: Stack(
           clipBehavior: Clip.none,

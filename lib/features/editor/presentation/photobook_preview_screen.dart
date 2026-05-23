@@ -59,7 +59,10 @@ class PhotobookPreviewScreen extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 20),
               itemBuilder: (context, index) {
                 final page = schema.pages[index];
-                final missingFrames = page.effectiveFrames
+                final pageFrames = page.layers.isNotEmpty
+                    ? page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) => layer.frame!).toList()
+                    : page.effectiveFrames;
+                final missingFrames = pageFrames
                     .where((frame) => photoStateByFrameId[frame.id] == null)
                     .length;
 
@@ -264,7 +267,10 @@ class _PreviewPageCanvas extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(child: _buildPageBackground(page)),
-                ...page.effectiveFrames.map((frame) {
+                ...(page.layers.isNotEmpty
+                        ? page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) => layer.frame!)
+                        : page.effectiveFrames)
+                    .map((frame) {
                   final state = photoStateByFrameId[frame.id];
 
                   return Positioned(
@@ -310,7 +316,10 @@ class _PreviewPageCanvas extends StatelessWidget {
                     ),
                   );
                 }),
-                ...page.effectiveTexts.map((text) {
+                ...(page.layers.isNotEmpty
+                        ? page.layers.where((layer) => layer.type == 'text' && layer.text != null).map((layer) => layer.text!)
+                        : page.effectiveTexts)
+                    .map((text) {
                   final displayText = editedTextById[text.id] ?? text.text;
                   final isEmpty = displayText.trim().isEmpty;
                   return Positioned(
