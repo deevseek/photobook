@@ -203,6 +203,9 @@ class DesignLayerModel {
   factory DesignLayerModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
     final type = data['type']?.toString().toLowerCase() ?? '';
+    final style = data['style'] is Map
+        ? Map<String, dynamic>.from(data['style'] as Map)
+        : <String, dynamic>{};
 
     double toDouble(dynamic value, [double fallback = 0]) =>
         double.tryParse('${value ?? fallback}') ?? fallback;
@@ -218,14 +221,14 @@ class DesignLayerModel {
       height: toDouble(data['height']),
       rotation: toDouble(data['rotation']),
       opacity: toDouble(data['opacity'], 1),
-      fontFamily: (data['fontFamily'] ?? data['font_family'] ?? '').toString(),
-      fontSize: toDouble(data['fontSize'] ?? data['font_size'], 14),
-      fontWeight: (data['fontWeight'] ?? data['font_weight'] ?? 'normal').toString(),
-      fontStyle: (data['fontStyle'] ?? data['font_style'] ?? 'normal').toString(),
-      color: (data['color'] ?? '#000000').toString(),
-      textAlign: (data['textAlign'] ?? data['text_align'] ?? 'left').toString(),
-      lineHeight: toDouble(data['lineHeight'] ?? data['line_height'], 1.2),
-      letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'], 0),
+      fontFamily: (data['fontFamily'] ?? data['font_family'] ?? style['font_family'] ?? '').toString(),
+      fontSize: toDouble(data['fontSize'] ?? data['font_size'] ?? style['font_size'], 14),
+      fontWeight: (data['fontWeight'] ?? data['font_weight'] ?? style['font_weight'] ?? 'normal').toString(),
+      fontStyle: (data['fontStyle'] ?? data['font_style'] ?? style['font_style'] ?? 'normal').toString(),
+      color: (data['color'] ?? style['color'] ?? '#000000').toString(),
+      textAlign: (data['textAlign'] ?? data['text_align'] ?? style['text_align'] ?? 'left').toString(),
+      lineHeight: toDouble(data['lineHeight'] ?? data['line_height'] ?? style['line_height'], 1.2),
+      letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'] ?? style['letter_spacing'], 0),
       sourceStory: data['source_story']?.toString(),
       sourceObjectId: data['source_object_id']?.toString(),
       frame: _isFrameLayerType(type) ? DesignFrameModel.fromJson(data) : null,
@@ -316,6 +319,14 @@ class DesignTextModel {
   final bool editable;
   final String? placeholder;
   final TextStyleSchema style;
+  final String? fontFamily;
+  final double? fontSize;
+  final String? fontWeight;
+  final String? fontStyle;
+  final String? color;
+  final String? textAlign;
+  final double? lineHeight;
+  final double? letterSpacing;
 
   const DesignTextModel({
     required this.id,
@@ -333,10 +344,21 @@ class DesignTextModel {
     required this.editable,
     required this.placeholder,
     required this.style,
+    this.fontFamily,
+    this.fontSize,
+    this.fontWeight,
+    this.fontStyle,
+    this.color,
+    this.textAlign,
+    this.lineHeight,
+    this.letterSpacing,
   });
 
   factory DesignTextModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
+    final style = data['style'] is Map
+        ? Map<String, dynamic>.from(data['style'] as Map)
+        : <String, dynamic>{};
 
     return DesignTextModel(
       id: data['id']?.toString() ?? '',
@@ -353,10 +375,26 @@ class DesignTextModel {
       text: data['text']?.toString() ?? '',
       editable: data['editable'] == true || data['editable'] == 1,
       placeholder: data['placeholder']?.toString(),
-      style: TextStyleSchema.fromJson(data['style'] as Map<String, dynamic>?),
+      style: TextStyleSchema.fromJson(style),
+      fontFamily: (data['fontFamily'] ?? style['font_family'])?.toString(),
+      fontSize: _parseDouble(data['fontSize'] ?? style['font_size']),
+      fontWeight: (data['fontWeight'] ?? style['font_weight'])?.toString(),
+      fontStyle: (data['fontStyle'] ?? style['font_style'])?.toString(),
+      color: (data['color'] ?? style['color'])?.toString(),
+      textAlign: (data['textAlign'] ?? style['text_align'])?.toString(),
+      lineHeight: _parseDouble(data['lineHeight'] ?? style['line_height']),
+      letterSpacing: _parseDouble(data['letterSpacing'] ?? style['letter_spacing']),
     );
   }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
 }
+
 
 class TextStyleSchema {
   final String? fontFamily;
