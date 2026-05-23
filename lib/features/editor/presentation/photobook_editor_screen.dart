@@ -230,6 +230,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                   debugPrint('CANVAS POINTER DOWN local=${event.localPosition}');
                 },
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     Positioned.fill(child: _buildPageBackground(page)),
                     ...photoLayers.map(
@@ -323,7 +324,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }) {
     final displayText = _editedTextById[layer.id] ?? layer.content;
     final isSelected = _selectedTextLayerId == layer.id;
-    final isEmptyText = displayText.trim().isEmpty;
     final left = (layer.x * scaleX).toDouble();
     final top = (layer.y * scaleY).toDouble();
     final width = (layer.width * scaleX).toDouble();
@@ -352,7 +352,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             _openTextEditor(layer);
           },
             child: Container(
-              alignment: _parseTextAlign(layer.textAlign),
+              alignment: _parseTextAlignment(layer.textAlign),
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 border: isSelected
@@ -360,13 +360,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                     : null,
               ),
               child: Text(
-                isEmptyText ? 'Ketuk untuk edit teks' : displayText,
-                style: isEmptyText
-                    ? textStyle.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey.shade500,
-                      )
-                    : textStyle,
+                displayText,
+                style: textStyle,
                 textAlign: _parseFlutterTextAlign(layer.textAlign),
                 maxLines: null,
                 overflow: TextOverflow.visible,
@@ -489,7 +484,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
-  Alignment _parseTextAlign(String? value) {
+  Alignment _parseTextAlignment(String? value) {
     switch (value?.toLowerCase()) {
       case 'center':
         return Alignment.center;

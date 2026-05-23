@@ -307,6 +307,7 @@ class _PreviewPageCanvas extends StatelessWidget {
             height: displayHeight,
             child: ClipRect(
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                 Positioned.fill(child: _buildPageBackground(page)),
                 ...page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) {
@@ -358,7 +359,9 @@ class _PreviewPageCanvas extends StatelessWidget {
                 }),
                 ...page.layers.where((layer) => layer.type == 'text').map((layer) {
                   final displayText = editedTextById[layer.id] ?? layer.content;
-                  final isEmpty = displayText.trim().isEmpty;
+                  debugPrint(
+                    'TEXT RENDER id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
+                  );
                   return Positioned(
                     left: layer.x * scaleX,
                     top: layer.y * scaleY,
@@ -372,9 +375,11 @@ class _PreviewPageCanvas extends StatelessWidget {
                         child: Align(
                           alignment: _parseTextAlignment(layer.textAlign),
                           child: Text(
-                            isEmpty ? '' : displayText,
+                            displayText,
                             textAlign: _parseTextAlign(layer.textAlign),
                             style: _textStyleFromLayer(layer, scaleY),
+                            maxLines: null,
+                            overflow: TextOverflow.visible,
                           ),
                         ),
                       ),
