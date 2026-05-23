@@ -72,6 +72,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   final Map<String, String> _editedTextById = {};
   final Map<String, String> _savedTextById = {};
   String _inlineDraftText = '';
+  bool _isOpeningTextEditor = false;
 
   bool _loading = true;
   String? _error;
@@ -382,19 +383,15 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             behavior: HitTestBehavior.opaque,
             onTapDown: (_) {
               debugPrint('TEXT LAYER TAP DOWN id=${layer.id} content=$displayText');
+              if (!text.editable) return;
+              setState(() {
+                _selectedTextId = text.id;
+                _selectedFrameId = null;
+                _selectedTextLayerId = layer.id;
+                _inlineDraftText = displayText;
+              });
+              _safeOpenTextEditor(layer);
             },
-            onTap: text.editable
-                ? () {
-                    debugPrint('TEXT LAYER TAP id=${layer.id} content=$displayText');
-                    setState(() {
-                      _selectedTextId = text.id;
-                      _selectedFrameId = null;
-                      _selectedTextLayerId = layer.id;
-                      _inlineDraftText = displayText;
-                    });
-                    _openTextEditor(layer);
-                  }
-                : null,
             child: Container(
               alignment: _parseTextAlign(text.style.textAlign),
               decoration: BoxDecoration(
@@ -418,6 +415,17 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _safeOpenTextEditor(DesignLayerModel layer) async {
+    if (_isOpeningTextEditor) return;
+    _isOpeningTextEditor = true;
+    debugPrint('OPEN TEXT EDITOR REQUEST id=${layer.id}');
+    try {
+      await _openTextEditor(layer);
+    } finally {
+      _isOpeningTextEditor = false;
+    }
   }
 
   TextStyle _buildTextStyleFromSchema({
