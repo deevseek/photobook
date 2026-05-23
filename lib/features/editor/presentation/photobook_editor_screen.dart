@@ -67,9 +67,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   int _activePageIndex = 0;
   String? _selectedFrameId;
   String? _selectedTextId;
+  String? _selectedTextLayerId;
   final Map<String, FramePhotoState> _photoStateByFrameId = {};
   final Map<String, String> _editedTextById = {};
   final Map<String, String> _savedTextById = {};
+  String _inlineDraftText = '';
 
   bool _loading = true;
   String? _error;
@@ -189,6 +191,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         Expanded(
           child: _buildCanvas(context, schema),
         ),
+        if (_selectedTextLayerId != null)
+          _buildInlineTextEditor(schema),
         const SizedBox(height: 8),
         _buildPageThumbnails(schema),
         const SizedBox(height: 8),
@@ -239,7 +243,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                     ),
                     ...page.layers.where((layer) => layer.type == 'text' && layer.text != null).map(
                       (layer) => _buildTextLayer(
-                        text: layer.text!,
+                        layer: layer,
                         scaleX: scaleX,
                         scaleY: scaleY,
                       ),
@@ -313,10 +317,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
   Widget _buildTextLayer({
-    required DesignTextModel text,
+    required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
   }) {
+    final text = layer.text!;
     final displayText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
     final renderedX = text.x * scaleX;
     final renderedY = text.y * scaleY;
@@ -331,7 +336,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       renderedHeight: renderedHeight,
       scaleY: scaleY,
     );
-    debugPrint('TEXT RENDER id=${text.id} display=$displayText x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
+    debugPrint('TEXT RENDER id=${layer.id} x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
     debugPrint(
       'TEXT STYLE id=${text.id} rawFontSize=${text.style.fontSize} resolvedFontSize=${textStyle.fontSize} '
       'color=${textStyle.color} x=$renderedX y=$renderedY w=$renderedWidth h=$renderedHeight',
@@ -349,14 +354,17 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           angle: text.rotation * math.pi / 180,
           alignment: Alignment.topLeft,
           child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
+            behavior: HitTestBehavior.opaque,
             onTap: text.editable
                 ? () {
+                    debugPrint('TEXT LAYER TAP id=${layer.id} content=$displayText');
                     setState(() {
                       _selectedTextId = text.id;
                       _selectedFrameId = null;
+                      _selectedTextLayerId = layer.id;
+                      _inlineDraftText = displayText;
                     });
-                    _openTextEditor(text);
+                    _openTextEditor(layer);
                   }
                 : null,
             child: Container(
@@ -473,9 +481,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
   }
 
-  Future<void> _openTextEditor(DesignTextModel text) async {
+  Future<void> _openTextEditor(DesignLayerModel layer) async {
+    final text = layer.text;
+    if (text == null) return;
     final currentText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
-    print('OPEN TEXT EDITOR id=${text.id}');
+    debugPrint('OPEN TEXT EDITOR id=${layer.id} current=$currentText');
     final controller = TextEditingController(text: currentText);
 
     if (!mounted) {
@@ -485,6 +495,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     final result = await showDialog<String>(
       context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Edit Teks'),
@@ -499,11 +511,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(),
               child: const Text('Batal'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+              onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(controller.text),
               child: const Text('Simpan'),
             ),
           ],
@@ -513,11 +525,51 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     controller.dispose();
 
     if (!mounted || result == null) return;
-    print('SAVE TEXT id=${text.id} value=$result');
+    debugPrint('SAVE TEXT id=${text.id} value=$result');
     setState(() {
       _editedTextById[text.id] = result;
       _selectedFrameId = null;
+      _selectedTextLayerId = null;
     });
+  }
+
+  Widget _buildInlineTextEditor(DesignSchemaModel schema) {
+    final page = schema.pages[_activePageIndex];
+    final selectedLayer = page.layers
+        .where((layer) => layer.type == 'text' && layer.text != null)
+        .firstWhere((layer) => layer.id == _selectedTextLayerId, orElse: () => const DesignLayerModel(id: '', type: '', frame: null, text: null));
+    if (selectedLayer.id.isEmpty || selectedLayer.text == null) return const SizedBox.shrink();
+    final text = selectedLayer.text!;
+    final initialText = _editedTextById[text.id] ?? _savedTextById[text.id] ?? text.text;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              key: ValueKey('inline-editor-${selectedLayer.id}'),
+              initialValue: initialText,
+              onChanged: (value) => _inlineDraftText = value,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Masukkan teks',
+              ),
+              maxLines: null,
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _editedTextById[text.id] = _inlineDraftText;
+              });
+              debugPrint('SAVE TEXT id=${text.id} value=$_inlineDraftText');
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPageThumbnails(DesignSchemaModel schema) {
