@@ -173,7 +173,7 @@ class DesignLayerModel {
 
     return DesignLayerModel(
       id: (data['id'] ?? '').toString(),
-      type: (data['type'] ?? '').toString(),
+      type: type,
       content: (data['content'] ?? data['text'] ?? '').toString(),
       x: toDouble(data['x']),
       y: toDouble(data['y']),
