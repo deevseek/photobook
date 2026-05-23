@@ -338,7 +338,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     final text = layer.text!;
-    final displayText = _editedTextById[layer.id] ?? layer.content;
+    final displayText = _editedTextById[layer.id] ?? text.text;
     final renderedX = text.x * scaleX;
     final renderedY = text.y * scaleY;
     final renderedWidth = text.width * scaleX;
@@ -377,37 +377,37 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               _selectTextLayer(layer);
             },
             child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (_) {
-              debugPrint('TEXT LAYER TAP DOWN id=${layer.id} content=$displayText');
-              if (!text.editable) return;
-              _selectTextLayer(layer);
-            },
-            child: Container(
-              alignment: _parseTextAlign(text.style.textAlign),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: (_debugTextBounds || _selectedTextLayerId == layer.id)
-                    ? Border.all(
-                        color: _selectedTextLayerId == layer.id ? Colors.blueAccent : Colors.red,
-                        width: _selectedTextLayerId == layer.id ? 1.5 : 0.5,
-                      )
-                    : null,
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) {
+                debugPrint('TEXT LAYER TAP DOWN id=${layer.id} content=$displayText');
+                if (!text.editable) return;
+                _selectTextLayer(layer);
+              },
+              child: Container(
+                alignment: _parseTextAlign(text.style.textAlign),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: (_debugTextBounds || _selectedTextLayerId == layer.id)
+                      ? Border.all(
+                          color: _selectedTextLayerId == layer.id ? Colors.blueAccent : Colors.red,
+                          width: _selectedTextLayerId == layer.id ? 1.5 : 0.5,
+                        )
+                      : null,
+                ),
+                child: Text(
+                  isEmptyText ? placeholder : displayText,
+                  textAlign: _parseFlutterTextAlign(text.style.textAlign),
+                  maxLines: null,
+                  overflow: TextOverflow.visible,
+                  style: isEmptyText
+                      ? textStyle.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey.shade500,
+                        )
+                      : textStyle,
+                ),
               ),
-              child: Text(
-                isEmptyText ? placeholder : displayText,
-                textAlign: _parseFlutterTextAlign(text.style.textAlign),
-                maxLines: null,
-                overflow: TextOverflow.visible,
-                style: isEmptyText
-                    ? textStyle.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey.shade500,
-                      )
-                    : textStyle,
             ),
-          ),
-          ),
         ),
       ),
     );
@@ -517,7 +517,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   void _selectTextLayer(DesignLayerModel layer) {
-    final currentText = _editedTextById[layer.id] ?? layer.content;
+    final currentText = _editedTextById[layer.id] ?? layer.text?.text ?? '';
 
     debugPrint('SELECT TEXT LAYER id=${layer.id} current=$currentText');
 
