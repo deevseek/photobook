@@ -62,6 +62,7 @@ class DesignPageModel {
     required this.backgroundMissing,
     required this.frames,
     required this.texts,
+    this.layers = const [],
   });
 
   factory DesignPageModel.fromJson(Map<String, dynamic>? json) {
@@ -92,8 +93,8 @@ class DesignPageModel {
           : const [],
       layers: layersRaw is List
           ? layersRaw
-              .whereType<Map<String, dynamic>>()
-              .map(DesignLayerModel.fromJson)
+              .whereType<Map>()
+              .map((e) => DesignLayerModel.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : const [],
     );
