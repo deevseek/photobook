@@ -307,7 +307,7 @@ class _PreviewPageCanvas extends StatelessWidget {
             height: displayHeight,
             child: ClipRect(
               child: Stack(
-              children: [
+                children: [
                 Positioned.fill(child: _buildPageBackground(page)),
                 ...page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) {
                   final frame = layer.frame!;
@@ -381,7 +381,8 @@ class _PreviewPageCanvas extends StatelessWidget {
                     ),
                   );
                 }),
-              ],
+                ],
+              ),
             ),
           ),
         );
