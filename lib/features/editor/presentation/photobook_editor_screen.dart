@@ -76,6 +76,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   String? _error;
   DesignSchemaModel? _schema;
 
+  String _layerDisplayText(DesignLayerModel layer) {
+    final content = layer.content.trim();
+    if (content.isNotEmpty) return content;
+    final text = layer.text.trim();
+    if (text.isNotEmpty) return text;
+    return '';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +119,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       final savedTexts = <String, String>{
         for (final page in schema.pages)
           for (final layer in page.layers)
-            if (layer.type == 'text') layer.id: layer.content,
+            if (layer.type == 'text') layer.id: _layerDisplayText(layer),
       };
 
       setState(() {
@@ -329,7 +337,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleX,
     required double scaleY,
   }) {
-    final displayText = _editedTextById[layer.id] ?? layer.content;
+    final displayText = _editedTextById[layer.id] ?? _layerDisplayText(layer);
     final left = (layer.x * scaleX).toDouble();
     final top = (layer.y * scaleY).toDouble();
     final width = (layer.width * scaleX).toDouble();
@@ -379,7 +387,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
-          final displayText = _editedTextById[layer.id] ?? layer.content;
+          final displayText = _editedTextById[layer.id] ?? _layerDisplayText(layer);
           debugPrint('TEXT CLICK id=${layer.id} content=$displayText');
           _openTextEditor(layer);
         },
@@ -527,7 +535,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   void _selectTextLayer(DesignLayerModel layer) {
-    final currentText = _editedTextById[layer.id] ?? layer.content;
+    final currentText = _editedTextById[layer.id] ?? _layerDisplayText(layer);
 
     debugPrint('SELECT TEXT LAYER id=${layer.id} current=$currentText');
 
@@ -541,7 +549,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Future<void> _openTextEditor(DesignLayerModel layer) async {
-    final currentText = _editedTextById[layer.id] ?? layer.content;
+    final currentText = _editedTextById[layer.id] ?? _layerDisplayText(layer);
     final controller = TextEditingController(text: currentText);
 
     debugPrint('OPEN TEXT EDITOR id=${layer.id} current=$currentText');

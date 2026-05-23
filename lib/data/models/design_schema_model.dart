@@ -123,6 +123,7 @@ class DesignLayerModel {
   final String id;
   final String type;
   final String content;
+  final String text;
   final double x;
   final double y;
   final double width;
@@ -145,6 +146,7 @@ class DesignLayerModel {
     required this.id,
     required this.type,
     this.content = '',
+    this.text = '',
     this.x = 0,
     this.y = 0,
     this.width = 0,
@@ -175,6 +177,7 @@ class DesignLayerModel {
       id: (data['id'] ?? '').toString(),
       type: type,
       content: (data['content'] ?? data['text'] ?? '').toString(),
+      text: (data['text'] ?? '').toString(),
       x: toDouble(data['x']),
       y: toDouble(data['y']),
       width: toDouble(data['width']),
