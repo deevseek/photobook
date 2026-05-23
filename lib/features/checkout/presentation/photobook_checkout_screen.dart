@@ -378,14 +378,16 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
         };
       }).toList(),
       'texts': widget.schema.pages
-          .expand((page) => page.texts)
-          .map((text) {
+          .expand((page) => page.effectiveTextLayers.map((textLayer) => (page: page, textLayer: textLayer)))
+          .map((entry) {
+            final page = entry.page;
+            final textLayer = entry.textLayer;
             return {
-              'id': text.id,
-              'source_story': text.sourceStory,
-              'source_object_id': text.sourceObjectId,
-              'page_number': text.pageNumber,
-              'text': widget.editedTextById[text.id] ?? text.text,
+              'id': textLayer.id,
+              'source_story': textLayer.sourceStory,
+              'source_object_id': textLayer.sourceObjectId,
+              'page_number': page.pageNumber,
+              'text': widget.editedTextById[textLayer.id] ?? textLayer.text,
             };
           })
           .toList(),
