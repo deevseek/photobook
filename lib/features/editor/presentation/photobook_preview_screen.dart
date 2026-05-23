@@ -59,7 +59,7 @@ class PhotobookPreviewScreen extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 20),
               itemBuilder: (context, index) {
                 final page = schema.pages[index];
-                final missingFrames = page.frames
+                final missingFrames = page.effectiveFrames
                     .where((frame) => photoStateByFrameId[frame.id] == null)
                     .length;
 
@@ -264,7 +264,7 @@ class _PreviewPageCanvas extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(child: _buildPageBackground(page)),
-                ...page.frames.map((frame) {
+                ...page.effectiveFrames.map((frame) {
                   final state = photoStateByFrameId[frame.id];
 
                   return Positioned(
@@ -310,7 +310,7 @@ class _PreviewPageCanvas extends StatelessWidget {
                     ),
                   );
                 }),
-                ...page.texts.map((text) {
+                ...page.effectiveTexts.map((text) {
                   final displayText = editedTextById[text.id] ?? text.text;
                   final isEmpty = displayText.trim().isEmpty;
                   return Positioned(
@@ -330,13 +330,11 @@ class _PreviewPageCanvas extends StatelessWidget {
                             child: Text(
                               isEmpty ? '' : displayText,
                               textAlign: _parseTextAlign(text.style.textAlign),
-                              style: text.style.toTextStyle().copyWith(
-                                    fontSize: (text.style.fontSize ?? 16) * scaleY,
-                                    color: text.style.colorValue,
-                                    letterSpacing: text.style.letterSpacing != null
-                                        ? text.style.letterSpacing! * scaleY
-                                        : null,
-                                  ),
+                              style: text.style.toTextStyle(
+                                scaledFontSize: (text.style.fontSize ?? 16) * scaleY,
+                              ).copyWith(
+                                color: text.style.colorValue,
+                              ),
                             ),
                           ),
                         ],

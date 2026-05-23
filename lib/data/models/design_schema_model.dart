@@ -51,6 +51,7 @@ class DesignPageModel {
   final bool backgroundMissing;
   final List<DesignFrameModel> frames;
   final List<DesignTextModel> texts;
+  final List<DesignLayerModel> layers;
 
   const DesignPageModel({
     required this.pageNumber,
@@ -67,6 +68,7 @@ class DesignPageModel {
     final data = json ?? <String, dynamic>{};
     final framesRaw = data['frames'];
     final textsRaw = data['texts'];
+    final layersRaw = data['layers'];
 
     return DesignPageModel(
       pageNumber: int.tryParse('${data['page_number'] ?? 0}') ?? 0,
@@ -88,6 +90,46 @@ class DesignPageModel {
               .map(DesignTextModel.fromJson)
               .toList()
           : const [],
+      layers: layersRaw is List
+          ? layersRaw
+              .whereType<Map<String, dynamic>>()
+              .map(DesignLayerModel.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+
+  List<DesignFrameModel> get effectiveFrames =>
+      layers.isNotEmpty ? layers.where((l) => l.frame != null).map((l) => l.frame!).toList() : frames;
+
+  List<DesignTextModel> get effectiveTexts =>
+      layers.isNotEmpty ? layers.where((l) => l.text != null).map((l) => l.text!).toList() : texts;
+}
+
+
+
+class DesignLayerModel {
+  final String id;
+  final String type;
+  final DesignFrameModel? frame;
+  final DesignTextModel? text;
+
+  const DesignLayerModel({
+    required this.id,
+    required this.type,
+    required this.frame,
+    required this.text,
+  });
+
+  factory DesignLayerModel.fromJson(Map<String, dynamic>? json) {
+    final data = json ?? <String, dynamic>{};
+    final type = data['type']?.toString().toLowerCase() ?? '';
+
+    return DesignLayerModel(
+      id: data['id']?.toString() ?? '',
+      type: type,
+      frame: type == 'photo' ? DesignFrameModel.fromJson(data) : null,
+      text: type == 'text' ? DesignTextModel.fromJson(data) : null,
     );
   }
 }
@@ -255,16 +297,32 @@ class TextStyleSchema {
 
   Color? get colorValue => parseColor(color);
 
-  TextStyle toTextStyle() {
+  TextStyle toTextStyle({double? scaledFontSize}) {
+    final resolvedFontSize = scaledFontSize ?? fontSize;
     return TextStyle(
       fontFamily: (fontFamily == null || fontFamily!.isEmpty) ? null : fontFamily,
-      fontSize: fontSize,
+      fontSize: resolvedFontSize,
       fontWeight: _parseFontWeight(fontWeight),
       fontStyle: (fontStyle?.toLowerCase() == 'italic') ? FontStyle.italic : FontStyle.normal,
       color: colorValue,
-      height: lineHeight,
-      letterSpacing: letterSpacing,
+      height: _resolveLineHeightRatio(lineHeight, resolvedFontSize),
+      letterSpacing: _resolveLetterSpacing(letterSpacing, resolvedFontSize),
     );
+  }
+
+
+  static double? _resolveLineHeightRatio(double? value, double? fontSize) {
+    if (value == null || value <= 0) return null;
+    if (value > 10 && fontSize != null && fontSize > 0) {
+      return value / fontSize;
+    }
+    return value;
+  }
+
+  static double? _resolveLetterSpacing(double? value, double? fontSize) {
+    if (value == null) return null;
+    if (fontSize == null || fontSize <= 0) return value;
+    return (value / 1000.0) * fontSize;
   }
 
   static FontWeight? _parseFontWeight(String? value) {
