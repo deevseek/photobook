@@ -209,17 +209,6 @@ class _PreviewPageCanvas extends StatelessWidget {
     );
   }
 
-  Alignment _parseTextAlignment(String? value) {
-    switch (value?.toLowerCase()) {
-      case 'center':
-        return Alignment.center;
-      case 'right':
-        return Alignment.centerRight;
-      default:
-        return Alignment.centerLeft;
-    }
-  }
-
   TextAlign _parseTextAlign(String? value) {
     switch (value?.toLowerCase()) {
       case 'center':
@@ -360,7 +349,7 @@ class _PreviewPageCanvas extends StatelessWidget {
                 ...page.layers.where((layer) => layer.type == 'text').map((layer) {
                   final displayText = editedTextById[layer.id] ?? layer.content;
                   debugPrint(
-                    'TEXT RENDER id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
+                    'TEXT VISUAL id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
                   );
                   return Positioned(
                     left: layer.x * scaleX,
@@ -372,15 +361,13 @@ class _PreviewPageCanvas extends StatelessWidget {
                       child: Transform.rotate(
                         angle: layer.rotation * math.pi / 180,
                         alignment: Alignment.topLeft,
-                        child: Align(
-                          alignment: _parseTextAlignment(layer.textAlign),
-                          child: Text(
-                            displayText,
-                            textAlign: _parseTextAlign(layer.textAlign),
-                            style: _textStyleFromLayer(layer, scaleY),
-                            maxLines: null,
-                            overflow: TextOverflow.visible,
-                          ),
+                        child: Text(
+                          displayText,
+                          textAlign: _parseTextAlign(layer.textAlign),
+                          style: _textStyleFromLayer(layer, scaleY),
+                          maxLines: null,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
                         ),
                       ),
                     ),
