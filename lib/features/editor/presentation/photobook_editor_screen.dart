@@ -112,7 +112,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         for (final page in schema.pages)
           if (page.layers.isNotEmpty)
             for (final layer in page.layers)
-              if (layer.type == 'text' && layer.text != null) layer.text!.id: layer.text!.text,
+              if (layer.type == 'text') layer.id: layer.content,
         for (final page in schema.pages)
           if (page.layers.isEmpty)
             for (final text in page.effectiveTexts) text.id: text.text,
@@ -204,8 +204,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   Widget _buildCanvas(BuildContext context, DesignSchemaModel schema) {
     final page = schema.pages[_activePageIndex];
-    final photoLayers = page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).toList();
-    final textLayers = page.layers.where((layer) => layer.type == 'text' && layer.text != null).toList();
+    final photoLayers = page.layers.where((layer) => layer.type == 'photo').toList();
+    final textLayers = page.layers.where((layer) => layer.type == 'text').toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -233,7 +233,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (event) {
                   debugPrint('CANVAS POINTER DOWN local=${event.localPosition}');
-                  _handleCanvasPointerDown(event.localPosition, schema, scaleX, scaleY);
                 },
                 child: Stack(
                   children: [
@@ -276,51 +275,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         );
       },
     );
-  }
-
-  void _handleCanvasPointerDown(
-    Offset localPosition,
-    DesignSchemaModel schema,
-    double scaleX,
-    double scaleY,
-  ) {
-    final page = schema.pages[_activePageIndex];
-
-    final schemaX = localPosition.dx / scaleX;
-    final schemaY = localPosition.dy / scaleY;
-
-    debugPrint('CANVAS HIT TEST schema=($schemaX, $schemaY)');
-
-    final textLayers = page.layers
-        .where((layer) => layer.type == 'text' && layer.text != null)
-        .toList()
-        .reversed;
-
-    for (final layer in textLayers) {
-      final text = layer.text!;
-      if (!text.editable) continue;
-      final fontSize = (text.style.fontSize != null && text.style.fontSize! > 0) ? text.style.fontSize! : 24.0;
-
-      final left = text.x;
-      final top = text.y - (fontSize * 1.2);
-      final width = text.width;
-      final height = text.height + (fontSize * 1.6);
-
-      final rect = Rect.fromLTWH(left, top, width, height);
-
-      debugPrint(
-        'CHECK TEXT HIT id=${layer.id} rect=$rect point=($schemaX,$schemaY)',
-      );
-
-      if (rect.contains(Offset(schemaX, schemaY))) {
-        final displayText = _editedTextById[layer.id] ?? text.text;
-        debugPrint('CANVAS TEXT HIT id=${layer.id} content=$displayText');
-        _openTextEditor(layer);
-        return;
-      }
-    }
-
-    debugPrint('CANVAS HIT EMPTY');
   }
 
   Widget _buildPhotoLayer({
@@ -383,69 +337,63 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleX,
     required double scaleY,
   }) {
-    final text = layer.text!;
-    final displayText = _editedTextById[layer.id] ?? text.text;
-    final renderedX = text.x * scaleX;
-    final renderedY = text.y * scaleY;
-    final renderedWidth = text.width * scaleX;
-    final renderedHeight = text.height * scaleY;
-    final placeholder = (text.placeholder?.trim().isNotEmpty ?? false)
-        ? text.placeholder!.trim()
-        : 'Ketuk untuk edit teks';
+    final displayText = _editedTextById[layer.id] ?? layer.content;
+    final fontSize = layer.fontSize <= 0 ? 24.0 : layer.fontSize;
+
+    final renderedX = layer.x * scaleX;
+
+    // Perluas hitbox ke atas karena font IDML besar bisa overflow dari frame.
+    final renderedY = math.max(0, (layer.y - (fontSize * 1.2)) * scaleY);
+    final renderedWidth = layer.width * scaleX;
+    final renderedHeight = (layer.height + (fontSize * 1.8)) * scaleY;
+
+    final visualOffsetY = fontSize * 1.2 * scaleY;
+    final isSelected = _selectedTextLayerId == layer.id;
     final isEmptyText = displayText.trim().isEmpty;
-    final textStyle = _buildTextStyleFromSchema(
-      style: text.style,
-      renderedHeight: renderedHeight,
-      scaleY: scaleY,
-    );
-    debugPrint('TEXT RENDER id=${layer.id} x=${text.x} y=${text.y} w=${text.width} h=${text.height}');
+
+    final textStyle = _textStyleFromLayer(layer, scaleY);
+
     debugPrint(
-      'TEXT STYLE id=${text.id} rawFontSize=${text.style.fontSize} resolvedFontSize=${textStyle.fontSize} '
-      'color=${textStyle.color} x=$renderedX y=$renderedY w=$renderedWidth h=$renderedHeight',
+      'TEXT RENDER id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
     );
-    debugPrint('TEXT LAYER ORDER text overlay rendered after frames');
 
     return Positioned(
       left: renderedX,
       top: renderedY,
       width: renderedWidth,
       height: renderedHeight,
-      child: Opacity(
-        opacity: text.opacity.clamp(0.0, 1.0),
-        child: Transform.rotate(
-          angle: text.rotation * math.pi / 180,
-          alignment: Alignment.topLeft,
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: (_) {
-              debugPrint('TEXT POINTER DOWN id=${layer.id} content=$displayText');
-              if (!text.editable) return;
-              _selectTextLayer(layer);
-            },
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (_) {
-                debugPrint('TEXT LAYER TAP DOWN id=${layer.id} content=$displayText');
-                if (!text.editable) return;
-                _selectTextLayer(layer);
-              },
-              child: Container(
-                width: renderedWidth,
-                height: renderedHeight,
-                alignment: _parseTextAlign(text.style.textAlign),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: _selectedTextLayerId == layer.id ? Border.all(color: Colors.redAccent, width: 1) : null,
-                ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            debugPrint('TEXT OVERLAY CLICK id=${layer.id} text=$displayText');
+            _openTextEditor(layer);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              border: Border.all(
+                color: isSelected
+                    ? Colors.redAccent
+                    : Colors.redAccent.withOpacity(0.25),
+                width: isSelected ? 1 : 0.5,
+              ),
+            ),
+            alignment: _parseTextAlign(layer.textAlign),
+            child: Transform.translate(
+              offset: Offset(0, visualOffsetY),
+              child: SizedBox(
+                width: layer.width * scaleX,
+                height: layer.height * scaleY,
                 child: Text(
-                  isEmptyText ? placeholder : displayText,
+                  isEmptyText ? 'Ketuk untuk edit teks' : displayText,
                   style: isEmptyText
                       ? textStyle.copyWith(
                           fontStyle: FontStyle.italic,
                           color: Colors.grey.shade500,
                         )
                       : textStyle,
-                  textAlign: _parseFlutterTextAlign(text.style.textAlign),
+                  textAlign: _parseFlutterTextAlign(layer.textAlign),
                   maxLines: null,
                   overflow: TextOverflow.visible,
                 ),
@@ -457,18 +405,64 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
-  TextStyle _buildTextStyleFromSchema({
-    required TextStyleSchema style,
-    required double renderedHeight,
-    required double scaleY,
-  }) {
-    final rawFontSize = style.fontSize;
-    final fallbackFontSize = (renderedHeight * 0.55).clamp(8.0, 96.0).toDouble();
-    final resolvedFontSize = rawFontSize != null && rawFontSize > 0 ? rawFontSize * scaleY : fallbackFontSize;
-    return style.toTextStyle(scaledFontSize: resolvedFontSize).copyWith(
-          fontFamily: (style.fontFamily == null || style.fontFamily!.trim().isEmpty) ? null : style.fontFamily,
-          color: style.colorValue ?? Colors.black,
-        );
+  TextStyle _textStyleFromLayer(DesignLayerModel layer, double scaleY) {
+    final rawFontSize = layer.fontSize <= 0 ? 24.0 : layer.fontSize;
+    final scaledFontSize = rawFontSize * scaleY;
+
+    double? height;
+    if (layer.lineHeight > 10 && rawFontSize > 0) {
+      height = layer.lineHeight / rawFontSize;
+    } else if (layer.lineHeight > 0) {
+      height = layer.lineHeight;
+    }
+
+    final tracking = layer.letterSpacing;
+    final flutterLetterSpacing = tracking / 1000 * scaledFontSize;
+
+    return TextStyle(
+      fontFamily: layer.fontFamily.trim().isEmpty ? null : layer.fontFamily,
+      fontSize: scaledFontSize,
+      fontWeight: _parseFontWeight(layer.fontWeight),
+      fontStyle: layer.fontStyle.toLowerCase().contains('italic')
+          ? FontStyle.italic
+          : FontStyle.normal,
+      color: _parseHexColor(layer.color),
+      height: height,
+      letterSpacing: flutterLetterSpacing,
+    );
+  }
+
+  FontWeight _parseFontWeight(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'light':
+        return FontWeight.w300;
+      case 'medium':
+        return FontWeight.w500;
+      case 'semibold':
+        return FontWeight.w600;
+      case 'bold':
+        return FontWeight.w700;
+      case 'heavy':
+        return FontWeight.w900;
+      default:
+        return FontWeight.w400;
+    }
+  }
+
+  Color _parseHexColor(String? value) {
+    final raw = (value ?? '#000000').replaceAll('#', '').trim();
+
+    try {
+      if (raw.length == 6) {
+        return Color(int.parse('FF$raw', radix: 16));
+      }
+
+      if (raw.length == 8) {
+        return Color(int.parse(raw, radix: 16));
+      }
+    } catch (_) {}
+
+    return Colors.black;
   }
 
   Widget _buildSelectionOverlay({
@@ -481,10 +475,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       if (frame.id == _selectedFrameId) selectedFrame = frame;
     }
     final selectedTextLayer = page.layers
-        .where((layer) => layer.type == 'text' && layer.text != null)
+        .where((layer) => layer.type == 'text' && layer.id == _selectedTextLayerId)
         .cast<DesignLayerModel?>()
-        .firstWhere((layer) => layer?.id == _selectedTextLayerId, orElse: () => null);
-    final selectedText = selectedTextLayer?.text;
+        .firstWhere((layer) => layer != null, orElse: () => null);
 
     return Stack(
       children: [
@@ -503,12 +496,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               ),
             ),
           ),
-        if (selectedText != null)
+        if (selectedTextLayer != null)
           Positioned(
-            left: selectedText.x * scaleX,
-            top: selectedText.y * scaleY,
-            width: selectedText.width * scaleX,
-            height: selectedText.height * scaleY,
+            left: selectedTextLayer.x * scaleX,
+            top: selectedTextLayer.y * scaleY,
+            width: selectedTextLayer.width * scaleX,
+            height: selectedTextLayer.height * scaleY,
             child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -561,7 +554,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   void _selectTextLayer(DesignLayerModel layer) {
-    final currentText = _editedTextById[layer.id] ?? layer.text?.text ?? '';
+    final currentText = _editedTextById[layer.id] ?? layer.content;
 
     debugPrint('SELECT TEXT LAYER id=${layer.id} current=$currentText');
 
@@ -575,7 +568,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Future<void> _openTextEditor(DesignLayerModel layer) async {
-    final currentText = _editedTextById[layer.id] ?? layer.text?.text ?? '';
+    final currentText = _editedTextById[layer.id] ?? layer.content;
     final controller = TextEditingController(text: currentText);
 
     debugPrint('OPEN TEXT EDITOR id=${layer.id} current=$currentText');
