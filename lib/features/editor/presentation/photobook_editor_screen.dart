@@ -208,7 +208,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
   Widget _buildCanvas(BuildContext context, DesignSchemaModel schema) {
     final page = schema.pages[_activePageIndex];
-    final photoLayers = page.layers.where((layer) => layer.type == 'photo').toList();
+    final photoLayers = page.layers.where((layer) => layer.frame != null).toList();
     final textLayers = page.layers.where((layer) => layer.type == 'text').toList();
 
     return LayoutBuilder(
@@ -298,7 +298,6 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       page.cleanBackgroundUrl: 'clean_background_url',
       page.editorBackgroundUrl: 'editor_background_url',
       page.backgroundUrl: 'background_url',
-      page.previewUrl: 'preview_url',
     };
 
     String? selectedUrl;

@@ -166,6 +166,10 @@ class DesignLayerModel {
     required this.frame,
   });
 
+
+  static bool _isFrameLayerType(String type) {
+    return type == 'photo' || type == 'image' || type == 'frame';
+  }
   factory DesignLayerModel.fromJson(Map<String, dynamic>? json) {
     final data = json ?? <String, dynamic>{};
     final type = data['type']?.toString().toLowerCase() ?? '';
@@ -194,7 +198,7 @@ class DesignLayerModel {
       letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'], 0),
       sourceStory: data['source_story']?.toString(),
       sourceObjectId: data['source_object_id']?.toString(),
-      frame: type == 'photo' ? DesignFrameModel.fromJson(data) : null,
+      frame: _isFrameLayerType(type) ? DesignFrameModel.fromJson(data) : null,
     );
   }
 }
