@@ -206,10 +206,30 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
+  void _logPageLayerStats({
+    required DesignPageModel page,
+    required int pageIndex,
+    required int totalLayers,
+    required int textLayers,
+    required int photoLayers,
+    required int shapeLayers,
+    required int renderedText,
+    required int renderedPhoto,
+    required int skipped,
+  }) {
+    debugPrint(
+      'PAGE RENDER pageIndex=$pageIndex page=${page.pageNumber} page_width=${page.width} page_height=${page.height} '
+      'total_layers=$totalLayers text_layers=$textLayers photo_layers=$photoLayers shape_layers=$shapeLayers '
+      'rendered_text=$renderedText rendered_photo=$renderedPhoto skipped=$skipped',
+    );
+  }
+
   Widget _buildCanvas(BuildContext context, DesignSchemaModel schema) {
     final page = schema.pages[_activePageIndex];
-    final photoLayers = page.layers.where((layer) => layer.frame != null).toList();
-    final textLayers = page.layers.where((layer) => layer.type == 'text').toList();
+    final layers = page.layers;
+    final photoLayers = layers.where((layer) => layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame').toList();
+    final textLayers = layers.where((layer) => layer.type == 'text').toList();
+    final shapeLayers = layers.where((layer) => layer.type == 'shape').toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -232,42 +252,78 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             width: displayWidth,
             height: displayHeight,
             child: ClipRect(
-              child: Listener(
+              child: SizedBox(
+                width: displayWidth,
+                height: displayHeight,
+                child: Listener(
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (event) {
                   debugPrint('CANVAS POINTER DOWN local=${event.localPosition}');
                 },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(child: _buildPageBackground(page)),
-                    ...photoLayers.map(
-                      (layer) => _buildPhotoLayer(
+                child: Builder(
+                  builder: (context) {
+                    var renderedTextCount = 0;
+                    var renderedPhotoCount = 0;
+                    var skippedCount = 0;
+
+                    final photoWidgets = <Widget>[];
+                    for (final layer in photoLayers) {
+                      final photoWidget = _buildPhotoLayer(
                         context: context,
                         layer: layer,
                         scaleX: scaleX,
                         scaleY: scaleY,
-                      ),
-                    ),
-                    ...textLayers.map(
-                      (layer) => _buildTextLayerVisual(
-                        layer: layer,
-                        scaleX: scaleX,
-                        scaleY: scaleY,
-                      ),
-                    ),
-                    ...textLayers.map(
-                      (layer) => _buildTextLayerHitbox(
-                        layer: layer,
-                        scaleX: scaleX,
-                        scaleY: scaleY,
-                      ),
-                    ),
-                    if (_selectedFrameId != null || _selectedTextLayerId != null)
-                      IgnorePointer(
-                        child: _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
-                      ),
-                  ],
+                      );
+                      if (photoWidget == null) {
+                        skippedCount++;
+                        debugPrint('LAYER SKIPPED id=${layer.id} type=${layer.type} x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height} reason=photo_layer_not_renderable');
+                        continue;
+                      }
+                      renderedPhotoCount++;
+                      photoWidgets.add(photoWidget);
+                    }
+
+                    final textVisualWidgets = <Widget>[];
+                    final textHitboxWidgets = <Widget>[];
+                    for (final layer in textLayers) {
+                      final textVisual = _buildTextLayerVisual(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                      final textHitbox = _buildTextLayerHitbox(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                      if (textVisual == null || textHitbox == null) {
+                        skippedCount++;
+                        debugPrint('LAYER SKIPPED id=${layer.id} type=${layer.type} x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height} reason=text_layer_not_renderable');
+                        continue;
+                      }
+                      renderedTextCount++;
+                      textVisualWidgets.add(textVisual);
+                      textHitboxWidgets.add(textHitbox);
+                    }
+
+                    _logPageLayerStats(
+                      page: page,
+                      pageIndex: _activePageIndex,
+                      totalLayers: layers.length,
+                      textLayers: textLayers.length,
+                      photoLayers: photoLayers.length,
+                      shapeLayers: shapeLayers.length,
+                      renderedText: renderedTextCount,
+                      renderedPhoto: renderedPhotoCount,
+                      skipped: skippedCount,
+                    );
+
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(child: _buildPageBackground(page)),
+                        ...photoWidgets,
+                        ...textVisualWidgets,
+                        ...textHitboxWidgets,
+                        if (_selectedFrameId != null || _selectedTextLayerId != null)
+                          IgnorePointer(
+                            child: _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -277,18 +333,78 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
-  Widget _buildPhotoLayer({
+  Widget? _buildPhotoLayer({
     required BuildContext context,
     required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
   }) {
-    return _buildFrame(
-      context: context,
-      frame: layer.frame!,
-      scaleX: scaleX,
-      scaleY: scaleY,
-      layerId: layer.id,
+    if (layer.frame != null) {
+      return _buildFrame(
+        context: context,
+        frame: layer.frame!,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        layerId: layer.id,
+      );
+    }
+
+    final left = layer.x * scaleX;
+    final top = layer.y * scaleY;
+    final width = layer.width * scaleX;
+    final height = layer.height * scaleY;
+
+    if (width <= 0 || height <= 0) {
+      debugPrint(
+        'LAYER SKIPPED id=${layer.id} type=${layer.type} x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height} reason=invalid_photo_geometry',
+      );
+      return null;
+    }
+
+    final state = _photoStateByFrameId[layer.id];
+    final hasPhoto = state != null;
+    final isActive = _selectedFrameId == layer.id;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          debugPrint('PHOTO LAYER TAP id=${layer.id} source=layer_geometry_fallback');
+          setState(() {
+            _selectedFrameId = layer.id;
+            _selectedTextLayerId = null;
+          });
+        },
+        child: Opacity(
+          opacity: layer.opacity.clamp(0.0, 1.0),
+          child: Transform.rotate(
+            angle: layer.rotation * math.pi / 180,
+            alignment: Alignment.topLeft,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: isActive ? Colors.blue : Colors.white70,
+                  width: isActive ? 2 : 1,
+                ),
+                color: hasPhoto ? null : Colors.black.withOpacity(0.03),
+              ),
+              child: hasPhoto
+                  ? _buildCroppedPhoto(state)
+                  : Center(
+                      child: Icon(
+                        Icons.add_a_photo_outlined,
+                        size: 18,
+                        color: Colors.black.withOpacity(0.25),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -331,7 +447,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       ),
     );
   }
-  Widget _buildTextLayerVisual({
+  Widget? _buildTextLayerVisual({
     required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
@@ -373,7 +489,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
-  Widget _buildTextLayerHitbox({
+  Widget? _buildTextLayerHitbox({
     required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
