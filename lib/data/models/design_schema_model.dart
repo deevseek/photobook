@@ -113,6 +113,18 @@ class DesignLayerModel {
   final String id;
   final String type;
   final String content;
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+  final String fontFamily;
+  final double fontSize;
+  final String fontWeight;
+  final String fontStyle;
+  final String color;
+  final String textAlign;
+  final double lineHeight;
+  final double letterSpacing;
   final DesignFrameModel? frame;
   final DesignTextModel? text;
 
@@ -120,6 +132,18 @@ class DesignLayerModel {
     required this.id,
     required this.type,
     this.content = '',
+    this.x = 0,
+    this.y = 0,
+    this.width = 0,
+    this.height = 0,
+    this.fontFamily = '',
+    this.fontSize = 14,
+    this.fontWeight = 'normal',
+    this.fontStyle = 'normal',
+    this.color = '#000000',
+    this.textAlign = 'left',
+    this.lineHeight = 1.2,
+    this.letterSpacing = 0,
     required this.frame,
     required this.text,
   });
@@ -128,10 +152,25 @@ class DesignLayerModel {
     final data = json ?? <String, dynamic>{};
     final type = data['type']?.toString().toLowerCase() ?? '';
 
+    double toDouble(dynamic value, [double fallback = 0]) =>
+        double.tryParse('${value ?? fallback}') ?? fallback;
+
     return DesignLayerModel(
       id: data['id']?.toString() ?? '',
       type: type,
-      content: (data['content'] ?? data['text'] ?? data['placeholder'] ?? '').toString(),
+      content: (data['content'] ?? data['text'] ?? '').toString(),
+      x: toDouble(data['x']),
+      y: toDouble(data['y']),
+      width: toDouble(data['width']),
+      height: toDouble(data['height']),
+      fontFamily: (data['fontFamily'] ?? data['font_family'] ?? '').toString(),
+      fontSize: toDouble(data['fontSize'] ?? data['font_size'], 14),
+      fontWeight: (data['fontWeight'] ?? data['font_weight'] ?? 'normal').toString(),
+      fontStyle: (data['fontStyle'] ?? data['font_style'] ?? 'normal').toString(),
+      color: (data['color'] ?? '#000000').toString(),
+      textAlign: (data['textAlign'] ?? data['text_align'] ?? 'left').toString(),
+      lineHeight: toDouble(data['lineHeight'] ?? data['line_height'], 1.2),
+      letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'], 0),
       frame: type == 'photo' ? DesignFrameModel.fromJson(data) : null,
       text: type == 'text' ? DesignTextModel.fromJson(data) : null,
     );
