@@ -209,6 +209,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   void _logPageLayerStats({
     required DesignPageModel page,
     required int pageIndex,
+    required double pageWidth,
+    required double pageHeight,
     required int totalLayers,
     required int textLayers,
     required int photoLayers,
@@ -218,7 +220,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required int skipped,
   }) {
     debugPrint(
-      'PAGE RENDER pageIndex=$pageIndex page=${page.pageNumber} page_width=${page.width} page_height=${page.height} '
+      'PAGE RENDER pageIndex=$pageIndex page=${page.pageNumber} page_width=$pageWidth page_height=$pageHeight '
       'total_layers=$totalLayers text_layers=$textLayers photo_layers=$photoLayers shape_layers=$shapeLayers '
       'rendered_text=$renderedText rendered_photo=$renderedPhoto skipped=$skipped',
     );
@@ -252,10 +254,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             width: displayWidth,
             height: displayHeight,
             child: ClipRect(
-              child: SizedBox(
-                width: displayWidth,
-                height: displayHeight,
-                child: Listener(
+              child: Listener(
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (event) {
                   debugPrint('CANVAS POINTER DOWN local=${event.localPosition}');
@@ -301,6 +300,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                     _logPageLayerStats(
                       page: page,
                       pageIndex: _activePageIndex,
+                      pageWidth: schemaWidth,
+                      pageHeight: schemaHeight,
                       totalLayers: layers.length,
                       textLayers: textLayers.length,
                       photoLayers: photoLayers.length,
