@@ -230,7 +230,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     final page = schema.pages[_activePageIndex];
     final layers = page.layers;
     final photoLayers = layers.where((layer) => layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame').toList();
-    final textLayers = layers.where((layer) => layer.type == 'text').toList();
+    final textLayers = page.effectiveTextLayers;
     final shapeLayers = layers.where((layer) => layer.type == 'shape').toList();
 
     return LayoutBuilder(
@@ -581,8 +581,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       if (frame.id == _selectedFrameId) selectedFrame = frame;
     }
     DesignLayerModel? selectedTextLayer;
-    for (final layer in page.layers) {
-      if (layer.type == 'text' && layer.id == _selectedTextLayerId) {
+    for (final layer in page.effectiveTextLayers) {
+      if (layer.id == _selectedTextLayerId) {
         selectedTextLayer = layer;
         break;
       }
@@ -641,8 +641,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     final page = schema.pages[_activePageIndex];
 
-    for (final layer in page.layers) {
-      if (layer.type == 'text' && layer.id == _selectedTextLayerId) {
+    for (final layer in page.effectiveTextLayers) {
+      if (layer.id == _selectedTextLayerId) {
         return layer;
       }
     }

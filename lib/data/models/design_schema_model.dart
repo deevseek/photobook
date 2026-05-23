@@ -114,7 +114,37 @@ class DesignPageModel {
   List<DesignFrameModel> get effectiveFrames =>
       layers.isNotEmpty ? layers.where((l) => l.frame != null).map((l) => l.frame!).toList() : frames;
 
-  List<DesignTextModel> get effectiveTexts => texts;
+  List<DesignLayerModel> get effectiveTextLayers {
+    if (layers.isNotEmpty) {
+      return layers.where((layer) => layer.type == 'text').toList();
+    }
+    return texts
+        .map(
+          (text) => DesignLayerModel(
+            id: text.id,
+            type: 'text',
+            content: text.text,
+            text: text.text,
+            x: text.x,
+            y: text.y,
+            width: text.width,
+            height: text.height,
+            rotation: text.rotation,
+            fontFamily: text.fontFamily,
+            fontSize: text.fontSize,
+            fontWeight: text.fontWeight,
+            fontStyle: text.fontStyle,
+            color: text.color,
+            textAlign: text.textAlign,
+            lineHeight: text.lineHeight,
+            letterSpacing: text.letterSpacing,
+            sourceStory: text.sourceStory,
+            sourceObjectId: text.sourceObjectId,
+            frame: null,
+          ),
+        )
+        .toList();
+  }
 }
 
 
