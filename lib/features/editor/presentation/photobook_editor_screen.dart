@@ -384,9 +384,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 _selectTextLayer(layer);
               },
               child: Container(
+                width: renderedWidth,
+                height: renderedHeight,
+                color: Colors.transparent,
                 alignment: _parseTextAlign(text.style.textAlign),
                 decoration: BoxDecoration(
-                  color: Colors.transparent,
                   border: (_debugTextBounds || _selectedTextLayerId == layer.id)
                       ? Border.all(
                           color: _selectedTextLayerId == layer.id ? Colors.blueAccent : Colors.red,
@@ -396,18 +398,19 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 ),
                 child: Text(
                   isEmptyText ? placeholder : displayText,
-                  textAlign: _parseFlutterTextAlign(text.style.textAlign),
-                  maxLines: null,
-                  overflow: TextOverflow.visible,
                   style: isEmptyText
                       ? textStyle.copyWith(
                           fontStyle: FontStyle.italic,
                           color: Colors.grey.shade500,
                         )
                       : textStyle,
+                  textAlign: _parseFlutterTextAlign(text.style.textAlign),
+                  maxLines: null,
+                  overflow: TextOverflow.visible,
                 ),
               ),
             ),
+          ),
         ),
       ),
     );

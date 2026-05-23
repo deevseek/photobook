@@ -112,12 +112,14 @@ class DesignPageModel {
 class DesignLayerModel {
   final String id;
   final String type;
+  final String content;
   final DesignFrameModel? frame;
   final DesignTextModel? text;
 
   const DesignLayerModel({
     required this.id,
     required this.type,
+    this.content = '',
     required this.frame,
     required this.text,
   });
@@ -129,6 +131,7 @@ class DesignLayerModel {
     return DesignLayerModel(
       id: data['id']?.toString() ?? '',
       type: type,
+      content: (data['content'] ?? data['text'] ?? data['placeholder'] ?? '').toString(),
       frame: type == 'photo' ? DesignFrameModel.fromJson(data) : null,
       text: type == 'text' ? DesignTextModel.fromJson(data) : null,
     );
