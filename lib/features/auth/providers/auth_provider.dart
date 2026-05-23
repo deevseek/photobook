@@ -21,6 +21,7 @@ class AuthProvider extends ChangeNotifier {
   bool isDevMode = false;
 
   bool get isAuthenticated => user != null;
+  bool get isGoogleSignInAvailable => _repository.isGoogleSignInAvailable;
 
   Future<void> bootstrap() async {
     loading = true;
@@ -74,7 +75,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       final logged = await _repository.loginWithGoogle();
       if (logged == null) {
-        error = 'Login dibatalkan.';
+        error = isGoogleSignInAvailable
+            ? 'Login dibatalkan.'
+            : 'Google Sign-In belum dikonfigurasi untuk Web (client ID kosong).';
         return false;
       }
       user = logged;

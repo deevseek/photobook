@@ -27,16 +27,21 @@ class LoginScreen extends StatelessWidget {
                     ? null
                     : () async {
                         if (kIsWeb) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login Google belum dikonfigurasi untuk platform ini.')));
-                          return;
+                          final canUseGoogle = context.read<AuthProvider>().isGoogleSignInAvailable;
+                          if (!canUseGoogle) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Google Sign-In Web belum dikonfigurasi (client ID kosong). Login lain tetap bisa digunakan.')),
+                            );
+                            return;
+                          }
                         }
                         final ok = await context.read<AuthProvider>().signInWithGoogle();
                         if (!context.mounted) return;
                         if (ok) {
                           Navigator.pushReplacementNamed(context, AppRoutes.home);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(auth.error ?? 'Login gagal.')));
+                          return;
                         }
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(auth.error ?? 'Login gagal.')));
                       },
               ),
               if (AppConfig.devBypassLogin) ...[
