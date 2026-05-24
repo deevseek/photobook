@@ -363,8 +363,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
 
     final state = _photoStateByFrameId[layer.id];
-    final hasPhoto = state != null;
+    final fallbackImageSource = _resolveLayerImageSource(layer);
+    final hasPhoto = state != null || fallbackImageSource != null;
     final isActive = _selectedFrameId == layer.id;
+    _debugPhotoVisual(
+      layer: layer,
+      selectedUserImageUrl: state != null ? 'memory-bytes' : null,
+      finalSource: state != null ? 'memory-bytes' : fallbackImageSource,
+    );
 
     return Positioned(
       left: left,
@@ -394,7 +400,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 color: hasPhoto ? null : Colors.black.withOpacity(0.03),
               ),
               child: hasPhoto
-                  ? _buildCroppedPhoto(state)
+                  ? (state != null
+                      ? _buildCroppedPhoto(state)
+                      : _buildTemplateImage(fallbackImageSource!))
                   : Center(
                       child: Icon(
                         Icons.add_a_photo_outlined,
@@ -409,6 +417,62 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
+
+  DesignLayerModel? _findLayerById(String layerId) {
+    final schema = _schema;
+    if (schema == null) return null;
+    for (final page in schema.pages) {
+      for (final layer in page.layers) {
+        if (layer.id == layerId) return layer;
+      }
+    }
+    return null;
+  }
+
+  String? _resolveLayerImageSourceById(String layerId) {
+    final layer = _findLayerById(layerId);
+    return layer == null ? null : _resolveLayerImageSource(layer);
+  }
+
+  String? _resolveLayerImageSource(DesignLayerModel layer) {
+    final imageSource =
+        layer.imageUrl ??
+        layer.originalImageUrl ??
+        layer.assetUrl ??
+        layer.mediaUrl ??
+        layer.previewUrl;
+    if (imageSource == null || imageSource.trim().isEmpty) {
+      return null;
+    }
+    return imageSource;
+  }
+
+  void _debugPhotoVisual({
+    required DesignLayerModel layer,
+    required String? selectedUserImageUrl,
+    required String? finalSource,
+  }) {
+    debugPrint(
+      'PHOTO VISUAL id=${layer.id} imageUrl=${layer.imageUrl ?? ''} originalImageUrl=${layer.originalImageUrl ?? ''} assetUrl=${layer.assetUrl ?? ''} mediaUrl=${layer.mediaUrl ?? ''} previewUrl=${layer.previewUrl ?? ''} selected=${selectedUserImageUrl ?? ''} finalSource=${finalSource ?? ''}',
+    );
+  }
+
+  Widget _buildTemplateImage(String url) {
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.black.withOpacity(0.06),
+        child: Center(
+          child: Icon(
+            Icons.add_a_photo_outlined,
+            size: 18,
+            color: Colors.black.withOpacity(0.25),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildPageBackground(DesignPageModel page) {
     final candidates = <String?, String>{
@@ -887,8 +951,19 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     String? layerId,
   }) {
     final state = _photoStateByFrameId[frame.id];
-    final hasPhoto = state != null;
+    final fallbackImageSource = layerId != null ? _resolveLayerImageSourceById(layerId) : null;
+    final hasPhoto = state != null || fallbackImageSource != null;
     final isActive = _selectedFrameId == frame.id;
+    if (layerId != null) {
+      final layer = _findLayerById(layerId);
+      if (layer != null) {
+        _debugPhotoVisual(
+          layer: layer,
+          selectedUserImageUrl: state != null ? 'memory-bytes' : null,
+          finalSource: state != null ? 'memory-bytes' : fallbackImageSource,
+        );
+      }
+    }
 
     final visualWidth = frame.width * scaleX;
     final visualHeight = frame.height * scaleY;
@@ -945,7 +1020,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 child: ClipRRect(
                   borderRadius: radius,
                   child: hasPhoto
-                      ? _buildCroppedPhoto(state!)
+                      ? (state != null
+                          ? _buildCroppedPhoto(state)
+                          : _buildTemplateImage(fallbackImageSource!))
                       : Container(
                           color: Colors.black.withOpacity(0.06),
                           child: Center(
@@ -965,7 +1042,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 ),
               ),
             ),
-            if (hasPhoto)
+            if (state != null)
               Positioned(
                 right: -2,
                 top: -2,

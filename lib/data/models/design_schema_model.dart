@@ -170,6 +170,12 @@ class DesignLayerModel {
   final double letterSpacing;
   final String? sourceStory;
   final String? sourceObjectId;
+  final String? imageUrl;
+  final String? originalImageUrl;
+  final String? assetUrl;
+  final String? mediaUrl;
+  final String? previewUrl;
+  final Map<String, dynamic> meta;
   final DesignFrameModel? frame;
 
   const DesignLayerModel({
@@ -193,6 +199,12 @@ class DesignLayerModel {
     this.letterSpacing = 0,
     this.sourceStory,
     this.sourceObjectId,
+    this.imageUrl,
+    this.originalImageUrl,
+    this.assetUrl,
+    this.mediaUrl,
+    this.previewUrl,
+    this.meta = const {},
     required this.frame,
   });
 
@@ -231,6 +243,14 @@ class DesignLayerModel {
       letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'] ?? style['letter_spacing'], 0),
       sourceStory: data['source_story']?.toString(),
       sourceObjectId: data['source_object_id']?.toString(),
+      imageUrl: normalizeFileUrl(data['image_url']?.toString()),
+      originalImageUrl: normalizeFileUrl(data['original_image_url']?.toString()),
+      assetUrl: normalizeFileUrl(data['asset_url']?.toString()),
+      mediaUrl: normalizeFileUrl(data['media_url']?.toString()),
+      previewUrl: normalizeFileUrl(data['preview_url']?.toString()),
+      meta: data['meta'] is Map
+          ? Map<String, dynamic>.from(data['meta'] as Map)
+          : const <String, dynamic>{},
       frame: _isFrameLayerType(type) ? DesignFrameModel.fromJson(data) : null,
     );
   }
