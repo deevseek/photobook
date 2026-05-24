@@ -272,8 +272,9 @@ class _PreviewPageCanvas extends StatelessWidget {
   }
 
   Color? parseHexColor(dynamic value) {
-    final rawValue = value?.toString().trim();
-    if (rawValue == null || rawValue.isEmpty) return null;
+    if (value is! String) return null;
+    final rawValue = value.trim();
+    if (rawValue.isEmpty) return null;
     final raw = rawValue.replaceAll('#', '');
     try {
       if (raw.length == 6) return Color(int.parse('FF${raw.toUpperCase()}', radix: 16));
@@ -321,11 +322,11 @@ class _PreviewPageCanvas extends StatelessWidget {
                     if (layer.width <= 0 || layer.height <= 0) return const SizedBox.shrink();
                     final fillColor =
                         parseHexColor(
-                          layer.meta['fill_color'] ??
-                              layer.fillColor ??
+                          layer.fillColor ??
                               layer.backgroundColor ??
                               layer.color ??
-                              layer.meta['final_fill_color'],
+                              layer.meta['final_fill_color'] ??
+                              layer.meta['fill_color'],
                         ) ??
                         Colors.transparent;
                     debugPrint(
@@ -346,14 +347,15 @@ class _PreviewPageCanvas extends StatelessWidget {
                         : (layer.meta['stroke_width'] is num ? (layer.meta['stroke_width'] as num).toDouble() : 1.0);
                     final strokeColor =
                         parseHexColor(
-                          layer.meta['stroke_color'] ??
-                              layer.strokeColor ??
+                          layer.strokeColor ??
                               layer.color ??
-                              layer.meta['final_stroke_color'],
+                              layer.meta['final_stroke_color'] ??
+                              layer.meta['stroke_color'],
                         ) ??
                         const Color(0xFF000000);
                     final isHorizontal = layer.width >= layer.height;
-                    final strokeWidth = (strokeWidthRaw * scaleX).clamp(1.0, 9999.0);
+                    final lineScale = isHorizontal ? scaleY : scaleX;
+                    final strokeWidth = (strokeWidthRaw * lineScale).clamp(1.0, 9999.0);
                     debugPrint(
                       'LINE RENDER id=${layer.id} stroke_color=${layer.meta['stroke_color'] ?? layer.strokeColor} color=${layer.color} stroke_width=$strokeWidthRaw resolvedStrokeColor=$strokeColor x=${layer.x} y=${layer.y} width=${layer.width} height=${layer.height}',
                     );
