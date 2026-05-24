@@ -215,13 +215,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required int textLayers,
     required int photoLayers,
     required int shapeLayers,
+    required int lineLayers,
     required int renderedText,
     required int renderedPhoto,
     required int skipped,
   }) {
     debugPrint(
       'PAGE RENDER pageIndex=$pageIndex page=${page.pageNumber} page_width=$pageWidth page_height=$pageHeight '
-      'total_layers=$totalLayers text_layers=$textLayers photo_layers=$photoLayers shape_layers=$shapeLayers '
+      'total_layers=$totalLayers text_layers=$textLayers photo_layers=$photoLayers shape_layers=$shapeLayers line_layers=$lineLayers '
       'rendered_text=$renderedText rendered_photo=$renderedPhoto skipped=$skipped',
     );
   }
@@ -229,9 +230,17 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   Widget _buildCanvas(BuildContext context, DesignSchemaModel schema) {
     final page = schema.pages[_activePageIndex];
     final layers = page.layers;
-    final photoLayers = layers.where((layer) => layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame').toList();
-    final textLayers = page.effectiveTextLayers;
-    final shapeLayers = layers.where((layer) => layer.type == 'shape').toList();
+    final indexedLayers = layers.indexed.toList()
+      ..sort((a, b) {
+        final az = a.$2.zIndex ?? a.$1;
+        final bz = b.$2.zIndex ?? b.$1;
+        return az.compareTo(bz);
+      });
+    final sortedLayers = indexedLayers.map((e) => e.$2).toList();
+    final photoLayers = sortedLayers.where((layer) => layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame').toList();
+    final textLayers = sortedLayers.where((layer) => layer.type == 'text').toList();
+    final shapeLayers = sortedLayers.where((layer) => layer.type == 'shape').toList();
+    final lineLayers = sortedLayers.where((layer) => layer.type == 'line').toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -265,36 +274,25 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                     var renderedPhotoCount = 0;
                     var skippedCount = 0;
 
-                    final photoWidgets = <Widget>[];
-                    for (final layer in photoLayers) {
-                      final photoWidget = _buildPhotoLayer(
-                        context: context,
-                        layer: layer,
-                        scaleX: scaleX,
-                        scaleY: scaleY,
-                      );
-                      if (photoWidget == null) {
+                    final layerWidgets = <Widget>[];
+                    for (final layer in sortedLayers) {
+                      Widget? widget;
+                      if (layer.type == 'text') {
+                        widget = _buildTextLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                        if (widget != null) renderedTextCount++;
+                      } else if (layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame') {
+                        widget = _buildPhotoLayer(context: context, layer: layer, scaleX: scaleX, scaleY: scaleY);
+                        if (widget != null) renderedPhotoCount++;
+                      } else if (layer.type == 'shape') {
+                        widget = _buildShapeLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                      } else if (layer.type == 'line') {
+                        widget = _buildLineLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                      }
+                      if (widget == null) {
                         skippedCount++;
-                        debugPrint('LAYER SKIPPED id=${layer.id} type=${layer.type} x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height} reason=photo_layer_not_renderable');
                         continue;
                       }
-                      renderedPhotoCount++;
-                      photoWidgets.add(photoWidget);
-                    }
-
-                    final textVisualWidgets = <Widget>[];
-                    final textHitboxWidgets = <Widget>[];
-                    for (final layer in textLayers) {
-                      final textVisual = _buildTextLayerVisual(layer: layer, scaleX: scaleX, scaleY: scaleY);
-                      final textHitbox = _buildTextLayerHitbox(layer: layer, scaleX: scaleX, scaleY: scaleY);
-                      if (textVisual == null || textHitbox == null) {
-                        skippedCount++;
-                        debugPrint('LAYER SKIPPED id=${layer.id} type=${layer.type} x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height} reason=text_layer_not_renderable');
-                        continue;
-                      }
-                      renderedTextCount++;
-                      textVisualWidgets.add(textVisual);
-                      textHitboxWidgets.add(textHitbox);
+                      layerWidgets.add(widget);
                     }
 
                     _logPageLayerStats(
@@ -306,6 +304,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       textLayers: textLayers.length,
                       photoLayers: photoLayers.length,
                       shapeLayers: shapeLayers.length,
+                      lineLayers: lineLayers.length,
                       renderedText: renderedTextCount,
                       renderedPhoto: renderedPhotoCount,
                       skipped: skippedCount,
@@ -315,9 +314,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       clipBehavior: Clip.none,
                       children: [
                         Positioned.fill(child: _buildPageBackground(page)),
-                        ...photoWidgets,
-                        ...textVisualWidgets,
-                        ...textHitboxWidgets,
+                        ...layerWidgets,
                         if (_selectedFrameId != null || _selectedTextLayerId != null)
                           IgnorePointer(
                             child: _buildSelectionOverlay(page: page, scaleX: scaleX, scaleY: scaleY),
@@ -512,7 +509,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       ),
     );
   }
-  Widget? _buildTextLayerVisual({
+  Widget? _buildTextLayer({
     required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
@@ -534,7 +531,13 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       top: top,
       width: width,
       height: height,
-      child: IgnorePointer(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          final oldContent = displayText;
+          debugPrint('TEXT CLICK id=${layer.id} content=$oldContent');
+          _openTextEditor(layer);
+        },
         child: Opacity(
           opacity: layer.opacity.clamp(0.0, 1.0),
           child: Transform.rotate(
@@ -553,25 +556,47 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       ),
     );
   }
-
-  Widget? _buildTextLayerHitbox({
+  Widget? _buildShapeLayer({
     required DesignLayerModel layer,
     required double scaleX,
     required double scaleY,
   }) {
+    if (layer.width <= 0 || layer.height <= 0) return null;
+    final color = _parseHexColor(layer.fillColor ?? layer.backgroundColor ?? layer.color);
     return Positioned(
       left: layer.x * scaleX,
       top: layer.y * scaleY,
       width: layer.width * scaleX,
       height: layer.height * scaleY,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          final displayText = _editedTextById[layer.id] ?? _layerDisplayText(layer);
-          debugPrint('TEXT CLICK id=${layer.id} content=$displayText');
-          _openTextEditor(layer);
-        },
-        child: const SizedBox.expand(),
+      child: Opacity(opacity: layer.opacity.clamp(0.0, 1.0), child: Container(color: color)),
+    );
+  }
+
+  Widget? _buildLineLayer({
+    required DesignLayerModel layer,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    if (layer.width <= 0 || layer.height <= 0) return null;
+    final isHorizontal = layer.width >= layer.height;
+    final thickness = (isHorizontal ? layer.height : layer.width) * (isHorizontal ? scaleY : scaleX);
+    final color = _parseHexColor(layer.strokeColor ?? layer.color);
+    return Positioned(
+      left: layer.x * scaleX,
+      top: layer.y * scaleY,
+      width: layer.width * scaleX,
+      height: layer.height * scaleY,
+      child: Transform.rotate(
+        angle: layer.rotation * math.pi / 180,
+        alignment: Alignment.center,
+        child: Align(
+          alignment: Alignment.center,
+          child: Container(
+            width: isHorizontal ? double.infinity : thickness.clamp(1.0, 9999.0),
+            height: isHorizontal ? thickness.clamp(1.0, 9999.0) : double.infinity,
+            color: color.withOpacity(layer.opacity.clamp(0.0, 1.0)),
+          ),
+        ),
       ),
     );
   }
@@ -794,7 +819,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       _selectedFrameId = null;
     });
 
-    debugPrint('SAVE TEXT id=${layer.id} value=$result');
+    debugPrint('EDIT TEXT layer_id=${layer.id} old="$currentText" new="$result"');
   }
 
   Widget _buildInlineTextEditor(DesignSchemaModel schema) {
