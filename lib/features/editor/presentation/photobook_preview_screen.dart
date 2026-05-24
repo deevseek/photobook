@@ -248,7 +248,7 @@ class _PreviewPageCanvas extends StatelessWidget {
       fontStyle: layer.fontStyle.toLowerCase().contains('italic')
           ? FontStyle.italic
           : FontStyle.normal,
-      color: _parseHexColor(layer.color),
+      color: parseHexColor(layer.color) ?? const Color(0xFF000000),
       height: height,
       letterSpacing: layer.letterSpacing / 1000 * scaledFontSize,
     );
@@ -271,13 +271,15 @@ class _PreviewPageCanvas extends StatelessWidget {
     }
   }
 
-  Color _parseHexColor(String? value) {
-    final raw = (value ?? '#000000').replaceAll('#', '').trim();
+  Color? parseHexColor(dynamic value) {
+    final rawValue = value?.toString().trim();
+    if (rawValue == null || rawValue.isEmpty) return null;
+    final raw = rawValue.replaceAll('#', '');
     try {
-      if (raw.length == 6) return Color(int.parse('FF$raw', radix: 16));
-      if (raw.length == 8) return Color(int.parse(raw, radix: 16));
+      if (raw.length == 6) return Color(int.parse('FF${raw.toUpperCase()}', radix: 16));
+      if (raw.length == 8) return Color(int.parse(raw.toUpperCase(), radix: 16));
     } catch (_) {}
-    return Colors.black;
+    return null;
   }
 
   @override
@@ -295,8 +297,15 @@ class _PreviewPageCanvas extends StatelessWidget {
         final displayWidth = schemaWidth * scale;
         final displayHeight = schemaHeight * scale;
 
-        final scaleX = displayWidth / schemaWidth;
-        final scaleY = displayHeight / schemaHeight;
+        final scaleX = scale;
+        final scaleY = scale;
+        final indexedLayers = page.layers.indexed.toList()
+          ..sort((a, b) {
+            final az = a.$2.zIndex ?? a.$1;
+            final bz = b.$2.zIndex ?? b.$1;
+            return az.compareTo(bz);
+          });
+        final sortedLayers = indexedLayers.map((e) => e.$2);
 
         return Center(
           child: SizedBox(
@@ -307,7 +316,102 @@ class _PreviewPageCanvas extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                 Positioned.fill(child: _buildPageBackground(page)),
-                ...page.layers.where((layer) => layer.type == 'photo' && layer.frame != null).map((layer) {
+                ...sortedLayers.map((layer) {
+                  if (layer.type == 'shape') {
+                    if (layer.width <= 0 || layer.height <= 0) return const SizedBox.shrink();
+                    final fillColor =
+                        parseHexColor(
+                          layer.meta['fill_color'] ??
+                              layer.fillColor ??
+                              layer.backgroundColor ??
+                              layer.color ??
+                              layer.meta['final_fill_color'],
+                        ) ??
+                        Colors.transparent;
+                    debugPrint(
+                      'SHAPE RENDER id=${layer.id} fill_color=${layer.meta['fill_color'] ?? layer.fillColor} backgroundColor=${layer.backgroundColor} color=${layer.color} resolvedFillColor=$fillColor opacity=${layer.opacity}',
+                    );
+                    return Positioned(
+                      left: layer.x * scaleX,
+                      top: layer.y * scaleY,
+                      width: layer.width * scaleX,
+                      height: layer.height * scaleY,
+                      child: Opacity(opacity: layer.opacity.clamp(0.0, 1.0), child: ColoredBox(color: fillColor)),
+                    );
+                  }
+                  if (layer.type == 'line') {
+                    if (layer.width <= 0 || layer.height <= 0) return const SizedBox.shrink();
+                    final strokeWidthRaw = layer.strokeWidth > 0
+                        ? layer.strokeWidth
+                        : (layer.meta['stroke_width'] is num ? (layer.meta['stroke_width'] as num).toDouble() : 1.0);
+                    final strokeColor =
+                        parseHexColor(
+                          layer.meta['stroke_color'] ??
+                              layer.strokeColor ??
+                              layer.color ??
+                              layer.meta['final_stroke_color'],
+                        ) ??
+                        const Color(0xFF000000);
+                    final isHorizontal = layer.width >= layer.height;
+                    final strokeWidth = (strokeWidthRaw * scaleX).clamp(1.0, 9999.0);
+                    debugPrint(
+                      'LINE RENDER id=${layer.id} stroke_color=${layer.meta['stroke_color'] ?? layer.strokeColor} color=${layer.color} stroke_width=$strokeWidthRaw resolvedStrokeColor=$strokeColor x=${layer.x} y=${layer.y} width=${layer.width} height=${layer.height}',
+                    );
+                    return Positioned(
+                      left: layer.x * scaleX,
+                      top: layer.y * scaleY,
+                      width: layer.width * scaleX,
+                      height: layer.height * scaleY,
+                      child: Opacity(
+                        opacity: layer.opacity.clamp(0.0, 1.0),
+                        child: Transform.rotate(
+                          angle: layer.rotation * math.pi / 180,
+                          alignment: Alignment.center,
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                              width: isHorizontal ? double.infinity : strokeWidth,
+                              height: isHorizontal ? strokeWidth : double.infinity,
+                              color: strokeColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  if (!(layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame')) {
+                    if (layer.type != 'text') return const SizedBox.shrink();
+                  }
+                  if (layer.type == 'text') {
+                    final displayText = editedTextById[layer.id] ?? _layerDisplayText(layer);
+                    debugPrint(
+                      'TEXT VISUAL id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
+                    );
+                    return Positioned(
+                      left: layer.x * scaleX,
+                      top: layer.y * scaleY,
+                      width: layer.width * scaleX,
+                      height: layer.height * scaleY,
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: layer.opacity.clamp(0.0, 1.0),
+                          child: Transform.rotate(
+                            angle: layer.rotation * math.pi / 180,
+                            alignment: Alignment.topLeft,
+                            child: Text(
+                              displayText,
+                              textAlign: _parseTextAlign(layer.textAlign),
+                              style: _textStyleFromLayer(layer, scaleY),
+                              maxLines: null,
+                              softWrap: false,
+                              overflow: TextOverflow.visible,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  if (layer.frame == null) return const SizedBox.shrink();
                   final frame = layer.frame!;
                   final state = photoStateByFrameId[frame.id];
 
@@ -350,35 +454,6 @@ class _PreviewPageCanvas extends StatelessWidget {
                               ),
                             ),
                         ],
-                      ),
-                    ),
-                  );
-                }),
-                ...page.layers.where((layer) => layer.type == 'text').map((layer) {
-                  final displayText = editedTextById[layer.id] ?? _layerDisplayText(layer);
-                  debugPrint(
-                    'TEXT VISUAL id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
-                  );
-                  return Positioned(
-                    left: layer.x * scaleX,
-                    top: layer.y * scaleY,
-                    width: layer.width * scaleX,
-                    height: layer.height * scaleY,
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: layer.opacity.clamp(0.0, 1.0),
-                        child: Transform.rotate(
-                          angle: layer.rotation * math.pi / 180,
-                          alignment: Alignment.topLeft,
-                          child: Text(
-                            displayText,
-                            textAlign: _parseTextAlign(layer.textAlign),
-                            style: _textStyleFromLayer(layer, scaleY),
-                            maxLines: null,
-                            softWrap: false,
-                            overflow: TextOverflow.visible,
-                          ),
-                        ),
                       ),
                     ),
                   );
