@@ -359,6 +359,24 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
         return {
           'page_number': page.pageNumber,
           'background_url': page.editorBackgroundUrl ?? page.cleanBackgroundUrl ?? page.backgroundUrl ?? page.previewUrl,
+          'photo_layers': page.layers
+              .where((layer) => layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame')
+              .map((layer) {
+                final state = widget.photoStateByFrameId[layer.id];
+                return {
+                  'layer_id': layer.id,
+                  'image_url': layer.imageUrl ?? layer.previewUrl ?? layer.assetUrl ?? layer.mediaUrl ?? layer.originalImageUrl,
+                  'photo_file_name': state?.fileName,
+                  'crop': {
+                    'fit': 'cover',
+                    'scale': state?.scale ?? 1,
+                    'offset_x': state?.offset.dx ?? 0,
+                    'offset_y': state?.offset.dy ?? 0,
+                    'rotation': state?.rotation ?? 0,
+                  },
+                };
+              })
+              .toList(),
           'frames': page.frames.map((frame) {
             final state = widget.photoStateByFrameId[frame.id];
             return {
@@ -383,11 +401,11 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
             final page = entry.page;
             final textLayer = entry.textLayer;
             return {
-              'id': textLayer.id,
+              'layer_id': textLayer.id,
               'source_story': textLayer.sourceStory,
               'source_object_id': textLayer.sourceObjectId,
               'page_number': page.pageNumber,
-              'text': widget.editedTextById[textLayer.id] ?? textLayer.text,
+              'content': widget.editedTextById[textLayer.id] ?? textLayer.content,
             };
           })
           .toList(),

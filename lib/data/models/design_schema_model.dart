@@ -168,6 +168,10 @@ class DesignLayerModel {
   final String textAlign;
   final double lineHeight;
   final double letterSpacing;
+  final int? zIndex;
+  final String? fillColor;
+  final String? strokeColor;
+  final String? backgroundColor;
   final String? sourceStory;
   final String? sourceObjectId;
   final String? imageUrl;
@@ -197,6 +201,10 @@ class DesignLayerModel {
     this.textAlign = 'left',
     this.lineHeight = 1.2,
     this.letterSpacing = 0,
+    this.zIndex,
+    this.fillColor,
+    this.strokeColor,
+    this.backgroundColor,
     this.sourceStory,
     this.sourceObjectId,
     this.imageUrl,
@@ -241,6 +249,10 @@ class DesignLayerModel {
       textAlign: (data['textAlign'] ?? data['text_align'] ?? style['text_align'] ?? 'left').toString(),
       lineHeight: toDouble(data['lineHeight'] ?? data['line_height'] ?? style['line_height'], 1.2),
       letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'] ?? style['letter_spacing'], 0),
+      zIndex: int.tryParse('${data['z_index'] ?? style['z_index'] ?? ''}'),
+      fillColor: (data['fill_color'] ?? style['fill_color'])?.toString(),
+      strokeColor: (data['stroke_color'] ?? style['stroke_color'])?.toString(),
+      backgroundColor: (data['backgroundColor'] ?? data['background_color'] ?? style['background_color'])?.toString(),
       sourceStory: data['source_story']?.toString(),
       sourceObjectId: data['source_object_id']?.toString(),
       imageUrl: normalizeFileUrl(data['image_url']?.toString()),
