@@ -562,13 +562,27 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleY,
   }) {
     if (layer.width <= 0 || layer.height <= 0) return null;
-    final color = _parseHexColor(layer.fillColor ?? layer.backgroundColor ?? layer.color);
+    final resolvedColor = _parseHexColor(
+          layer.fillColor ??
+              layer.backgroundColor ??
+              layer.color ??
+              layer.meta['fill_color'] ??
+              layer.meta['source_fill_color'],
+        ) ??
+        Colors.transparent;
+    final resolvedOpacity = layer.opacity.clamp(0.0, 1.0);
+
+    print(
+      'SHAPE RENDER id=${layer.id} fill_color=${layer.fillColor} backgroundColor=${layer.backgroundColor} '
+      'color=${layer.color} resolvedColor=$resolvedColor opacity=$resolvedOpacity',
+    );
+
     return Positioned(
       left: layer.x * scaleX,
       top: layer.y * scaleY,
       width: layer.width * scaleX,
       height: layer.height * scaleY,
-      child: Opacity(opacity: layer.opacity.clamp(0.0, 1.0), child: Container(color: color)),
+      child: Opacity(opacity: resolvedOpacity, child: ColoredBox(color: resolvedColor)),
     );
   }
 
@@ -580,7 +594,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     if (layer.width <= 0 || layer.height <= 0) return null;
     final isHorizontal = layer.width >= layer.height;
     final thickness = (isHorizontal ? layer.height : layer.width) * (isHorizontal ? scaleY : scaleX);
-    final color = _parseHexColor(layer.strokeColor ?? layer.color);
+    final color = _parseHexColor(
+          layer.strokeColor ?? layer.color ?? layer.meta['stroke_color'],
+        ) ??
+        const Color(0xFF000000);
+    final effectiveThickness = thickness.clamp(1.0, 9999.0);
     return Positioned(
       left: layer.x * scaleX,
       top: layer.y * scaleY,
@@ -592,9 +610,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         child: Align(
           alignment: Alignment.center,
           child: Container(
-            width: isHorizontal ? double.infinity : thickness.clamp(1.0, 9999.0),
-            height: isHorizontal ? thickness.clamp(1.0, 9999.0) : double.infinity,
-            color: color.withOpacity(layer.opacity.clamp(0.0, 1.0)),
+            width: isHorizontal ? double.infinity : effectiveThickness,
+            height: isHorizontal ? effectiveThickness : double.infinity,
+            color: color.withValues(alpha: layer.opacity.clamp(0.0, 1.0)),
           ),
         ),
       ),
@@ -621,7 +639,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       fontStyle: layer.fontStyle.toLowerCase().contains('italic')
           ? FontStyle.italic
           : FontStyle.normal,
-      color: _parseHexColor(layer.color),
+      color: _parseHexColor(layer.color) ?? const Color(0xFF000000),
       height: height,
       letterSpacing: flutterLetterSpacing,
     );
@@ -644,8 +662,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
   }
 
-  Color _parseHexColor(String? value) {
-    final raw = (value ?? '#000000').replaceAll('#', '').trim();
+  Color? _parseHexColor(dynamic value) {
+    final rawValue = value?.toString().trim();
+    if (rawValue == null || rawValue.isEmpty) return null;
+
+    final raw = rawValue.replaceAll('#', '');
 
     try {
       if (raw.length == 6) {
@@ -655,9 +676,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       if (raw.length == 8) {
         return Color(int.parse(raw, radix: 16));
       }
-    } catch (_) {}
+    } catch (_) {
+      return null;
+    }
 
-    return Colors.black;
+    return null;
   }
 
   Widget _buildSelectionOverlay({
