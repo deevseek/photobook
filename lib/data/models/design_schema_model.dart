@@ -171,6 +171,7 @@ class DesignLayerModel {
   final int? zIndex;
   final String? fillColor;
   final String? strokeColor;
+  final double strokeWidth;
   final String? backgroundColor;
   final String? sourceStory;
   final String? sourceObjectId;
@@ -204,6 +205,7 @@ class DesignLayerModel {
     this.zIndex,
     this.fillColor,
     this.strokeColor,
+    this.strokeWidth = 0,
     this.backgroundColor,
     this.sourceStory,
     this.sourceObjectId,
@@ -240,7 +242,7 @@ class DesignLayerModel {
       width: toDouble(data['width']),
       height: toDouble(data['height']),
       rotation: toDouble(data['rotation']),
-      opacity: toDouble(data['opacity'], 1),
+      opacity: toDouble(data['opacity'] ?? style['opacity'], 1),
       fontFamily: (data['fontFamily'] ?? data['font_family'] ?? style['font_family'] ?? '').toString(),
       fontSize: toDouble(data['fontSize'] ?? data['font_size'] ?? style['font_size'], 14),
       fontWeight: (data['fontWeight'] ?? data['font_weight'] ?? style['font_weight'] ?? 'normal').toString(),
@@ -250,9 +252,10 @@ class DesignLayerModel {
       lineHeight: toDouble(data['lineHeight'] ?? data['line_height'] ?? style['line_height'], 1.2),
       letterSpacing: toDouble(data['letterSpacing'] ?? data['letter_spacing'] ?? style['letter_spacing'], 0),
       zIndex: int.tryParse('${data['z_index'] ?? style['z_index'] ?? ''}'),
-      fillColor: (data['fill_color'] ?? style['fill_color'])?.toString(),
-      strokeColor: (data['stroke_color'] ?? style['stroke_color'])?.toString(),
-      backgroundColor: (data['backgroundColor'] ?? data['background_color'] ?? style['background_color'])?.toString(),
+      fillColor: (data['fillColor'] ?? data['fill_color'] ?? style['fillColor'] ?? style['fill_color'])?.toString(),
+      strokeColor: (data['strokeColor'] ?? data['stroke_color'] ?? style['strokeColor'] ?? style['stroke_color'])?.toString(),
+      strokeWidth: toDouble(data['strokeWidth'] ?? data['stroke_width'] ?? style['strokeWidth'] ?? style['stroke_width'], 0),
+      backgroundColor: (data['backgroundColor'] ?? data['background_color'] ?? style['backgroundColor'] ?? style['background_color'])?.toString(),
       sourceStory: data['source_story']?.toString(),
       sourceObjectId: data['source_object_id']?.toString(),
       imageUrl: normalizeFileUrl(data['image_url']?.toString()),

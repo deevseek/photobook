@@ -564,11 +564,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     if (layer.width <= 0 || layer.height <= 0) return null;
     final resolvedColor =
         _parseHexColor(
-          layer.meta['fill_color'] ??
-              layer.fillColor ??
+          layer.fillColor ??
               layer.backgroundColor ??
               layer.color ??
-              layer.meta['final_fill_color'],
+              layer.meta['final_fill_color'] ??
+              layer.meta['fill_color'],
         ) ??
         Colors.transparent;
     final resolvedOpacity = layer.opacity.clamp(0.0, 1.0);
@@ -599,13 +599,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         : (layer.meta['stroke_width'] is num ? (layer.meta['stroke_width'] as num).toDouble() : 1.0);
     final strokeColor =
         _parseHexColor(
-          layer.meta['stroke_color'] ??
-              layer.strokeColor ??
+          layer.strokeColor ??
               layer.color ??
-              layer.meta['final_stroke_color'],
+              layer.meta['final_stroke_color'] ??
+              layer.meta['stroke_color'],
         ) ??
         const Color(0xFF000000);
-    final strokeWidth = (strokeWidthRaw * scaleX).clamp(1.0, 9999.0);
+    final lineScale = isHorizontal ? scaleY : scaleX;
+    final strokeWidth = (strokeWidthRaw * lineScale).clamp(1.0, 9999.0);
     debugPrint(
       'LINE RENDER id=${layer.id} stroke_color=${layer.meta['stroke_color'] ?? layer.strokeColor} color=${layer.color} '
       'stroke_width=$strokeWidthRaw resolvedStrokeColor=$strokeColor x=${layer.x} y=${layer.y} width=${layer.width} height=${layer.height}',
@@ -615,15 +616,18 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       top: layer.y * scaleY,
       width: layer.width * scaleX,
       height: layer.height * scaleY,
-      child: Transform.rotate(
-        angle: layer.rotation * math.pi / 180,
-        alignment: Alignment.center,
-        child: Align(
+      child: Opacity(
+        opacity: layer.opacity.clamp(0.0, 1.0),
+        child: Transform.rotate(
+          angle: layer.rotation * math.pi / 180,
           alignment: Alignment.center,
-          child: Container(
-            width: isHorizontal ? double.infinity : strokeWidth,
-            height: isHorizontal ? strokeWidth : double.infinity,
-            color: strokeColor.withValues(alpha: layer.opacity.clamp(0.0, 1.0)),
+          child: Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: isHorizontal ? double.infinity : strokeWidth,
+              height: isHorizontal ? strokeWidth : double.infinity,
+              color: strokeColor,
+            ),
           ),
         ),
       ),
@@ -674,8 +678,9 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Color? parseHexColor(dynamic value) {
-    final rawValue = value?.toString().trim();
-    if (rawValue == null || rawValue.isEmpty) return null;
+    if (value is! String) return null;
+    final rawValue = value.trim();
+    if (rawValue.isEmpty) return null;
 
     final raw = rawValue.replaceAll('#', '');
 
