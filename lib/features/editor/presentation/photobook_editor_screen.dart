@@ -605,8 +605,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               layer.meta['stroke_color'],
         ) ??
         const Color(0xFF000000);
-    final lineScale = isHorizontal ? scaleY : scaleX;
-    final strokeWidth = (strokeWidthRaw * lineScale).clamp(1.0, 9999.0);
+    final strokeWidth = (strokeWidthRaw * math.min(scaleX, scaleY)).clamp(1.0, 9999.0);
     debugPrint(
       'LINE RENDER id=${layer.id} stroke_color=${layer.meta['stroke_color'] ?? layer.strokeColor} color=${layer.color} '
       'stroke_width=$strokeWidthRaw resolvedStrokeColor=$strokeColor x=${layer.x} y=${layer.y} width=${layer.width} height=${layer.height}',
@@ -614,21 +613,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     return Positioned(
       left: layer.x * scaleX,
       top: layer.y * scaleY,
-      width: layer.width * scaleX,
-      height: layer.height * scaleY,
       child: Opacity(
         opacity: layer.opacity.clamp(0.0, 1.0),
-        child: Transform.rotate(
-          angle: layer.rotation * math.pi / 180,
-          alignment: Alignment.center,
-          child: Align(
-            alignment: Alignment.center,
-            child: Container(
-              width: isHorizontal ? double.infinity : strokeWidth,
-              height: isHorizontal ? strokeWidth : double.infinity,
-              color: strokeColor,
-            ),
-          ),
+        child: Container(
+          width: isHorizontal ? layer.width * scaleX : strokeWidth,
+          height: isHorizontal ? strokeWidth : layer.height * scaleY,
+          color: strokeColor,
         ),
       ),
     );
