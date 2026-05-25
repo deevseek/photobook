@@ -62,6 +62,8 @@ class PhotobookEditorScreen extends StatefulWidget {
 
 class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   static const bool _debugTextBounds = kDebugMode;
+  static const String _defaultRenderMode = 'pdf_background_overlay';
+  static const String _debugRenderMode = 'idml_full_render';
   final _repo = PhotobookRepository();
 
   int _activePageIndex = 0;
@@ -71,6 +73,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   final Map<String, String> _editedTextById = {};
   final Map<String, String> _savedTextById = {};
   String _inlineDraftText = '';
+  String _renderMode = _defaultRenderMode;
 
   bool _loading = true;
   String? _error;
@@ -159,6 +162,22 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.design.title),
+        actions: [
+          PopupMenuButton<String>(
+            initialValue: _renderMode,
+            onSelected: (value) => setState(() => _renderMode = value),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: _defaultRenderMode,
+                child: Text('Hybrid PDF Overlay'),
+              ),
+              PopupMenuItem(
+                value: _debugRenderMode,
+                child: Text('Debug IDML Full Render'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
@@ -212,18 +231,17 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double pageWidth,
     required double pageHeight,
     required int totalLayers,
-    required int textLayers,
-    required int photoLayers,
-    required int shapeLayers,
-    required int lineLayers,
-    required int renderedText,
-    required int renderedPhoto,
-    required int skipped,
+    required String renderMode,
+    required String backgroundUrl,
+    required int editableTextHotspots,
+    required int editablePhotoHotspots,
+    required int editedTextOverlays,
+    required int replacedPhotoOverlays,
   }) {
     debugPrint(
-      'PAGE RENDER pageIndex=$pageIndex page=${page.pageNumber} page_width=$pageWidth page_height=$pageHeight '
-      'total_layers=$totalLayers text_layers=$textLayers photo_layers=$photoLayers shape_layers=$shapeLayers line_layers=$lineLayers '
-      'rendered_text=$renderedText rendered_photo=$renderedPhoto skipped=$skipped',
+      'PAGE RENDER page=${page.pageNumber} page_index=$pageIndex render_mode=$renderMode background_url=$backgroundUrl '
+      'page_width=$pageWidth page_height=$pageHeight total_layers=$totalLayers editable_text_hotspots=$editableTextHotspots '
+      'editable_photo_hotspots=$editablePhotoHotspots edited_text_overlay=$editedTextOverlays replaced_photo_overlay=$replacedPhotoOverlays',
     );
   }
 
@@ -270,28 +288,29 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 },
                 child: Builder(
                   builder: (context) {
-                    var renderedTextCount = 0;
-                    var renderedPhotoCount = 0;
-                    var skippedCount = 0;
+                    var editedTextCount = 0;
+                    var replacedPhotoCount = 0;
 
                     final layerWidgets = <Widget>[];
                     for (final layer in sortedLayers) {
                       Widget? widget;
                       if (layer.type == 'text') {
                         widget = _buildTextLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
-                        if (widget != null) renderedTextCount++;
+                        if (_editedTextById[layer.id]?.isNotEmpty == true) editedTextCount++;
                       } else if (layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame') {
                         widget = _buildPhotoLayer(context: context, layer: layer, scaleX: scaleX, scaleY: scaleY);
-                        if (widget != null) renderedPhotoCount++;
+                        final frameId = layer.frame?.id ?? layer.id;
+                        if (_photoStateByFrameId.containsKey(frameId)) replacedPhotoCount++;
                       } else if (layer.type == 'shape') {
-                        widget = _buildShapeLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                        if (_renderMode == _debugRenderMode) {
+                          widget = _buildShapeLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                        }
                       } else if (layer.type == 'line') {
-                        widget = _buildLineLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                        if (_renderMode == _debugRenderMode) {
+                          widget = _buildLineLayer(layer: layer, scaleX: scaleX, scaleY: scaleY);
+                        }
                       }
-                      if (widget == null) {
-                        skippedCount++;
-                        continue;
-                      }
+                      if (widget == null) continue;
                       layerWidgets.add(widget);
                     }
 
@@ -301,13 +320,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                       pageWidth: schemaWidth,
                       pageHeight: schemaHeight,
                       totalLayers: layers.length,
-                      textLayers: textLayers.length,
-                      photoLayers: photoLayers.length,
-                      shapeLayers: shapeLayers.length,
-                      lineLayers: lineLayers.length,
-                      renderedText: renderedTextCount,
-                      renderedPhoto: renderedPhotoCount,
-                      skipped: skippedCount,
+                      renderMode: _renderMode,
+                      backgroundUrl: _resolvePageBackgroundUrl(page) ?? '',
+                      editableTextHotspots: textLayers.length,
+                      editablePhotoHotspots: photoLayers.length,
+                      editedTextOverlays: editedTextCount,
+                      replacedPhotoOverlays: replacedPhotoCount,
                     );
 
                     return Stack(
@@ -360,13 +378,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
 
     final state = _photoStateByFrameId[layer.id];
-    final fallbackImageSource = _resolveLayerImageSource(layer);
-    final hasPhoto = state != null || fallbackImageSource != null;
+    final hasPhoto = state != null;
     final isActive = _selectedFrameId == layer.id;
     _debugPhotoVisual(
       layer: layer,
       selectedUserImageUrl: state != null ? 'memory-bytes' : null,
-      finalSource: state != null ? 'memory-bytes' : fallbackImageSource,
+      finalSource: state != null ? 'memory-bytes' : null,
     );
 
     return Positioned(
@@ -391,22 +408,12 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: isActive ? Colors.blue : Colors.white70,
+                  color: isActive ? Colors.blue : Colors.transparent,
                   width: isActive ? 2 : 1,
                 ),
-                color: hasPhoto ? null : Colors.black.withOpacity(0.03),
+                color: hasPhoto ? null : Colors.transparent,
               ),
-              child: hasPhoto
-                  ? (state != null
-                      ? _buildCroppedPhoto(state)
-                      : _buildTemplateImage(fallbackImageSource!))
-                  : Center(
-                      child: Icon(
-                        Icons.add_a_photo_outlined,
-                        size: 18,
-                        color: Colors.black.withOpacity(0.25),
-                      ),
-                    ),
+              child: hasPhoto ? _buildCroppedPhoto(state!) : const SizedBox.shrink(),
             ),
           ),
         ),
@@ -471,6 +478,14 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
+  String? _resolvePageBackgroundUrl(DesignPageModel page) {
+    if ((page.previewUrl ?? '').isNotEmpty) return page.previewUrl;
+    if ((page.backgroundUrl ?? '').isNotEmpty) return page.backgroundUrl;
+    if ((page.editorBackgroundUrl ?? '').isNotEmpty) return page.editorBackgroundUrl;
+    if ((page.cleanBackgroundUrl ?? '').isNotEmpty) return page.cleanBackgroundUrl;
+    return null;
+  }
+
   Widget _buildPageBackground(DesignPageModel page) {
     final candidates = <String?, String>{
       page.cleanBackgroundUrl: 'clean_background_url',
@@ -491,7 +506,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
     debugPrint('PAGE BACKGROUND page=${page.pageNumber} using=$selectedSource url=${selectedUrl ?? ''}');
 
-    if (selectedUrl == null || selectedUrl.isEmpty) {
+    final baseUrl = _resolvePageBackgroundUrl(page) ?? selectedUrl;
+    if (baseUrl == null || baseUrl.isEmpty) {
       return Container(
         color: Colors.white,
         alignment: Alignment.center,
@@ -500,8 +516,8 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
 
     return Image.network(
-      selectedUrl,
-      fit: BoxFit.fill,
+      baseUrl,
+      fit: BoxFit.contain,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.white,
         alignment: Alignment.center,
@@ -514,7 +530,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     required double scaleX,
     required double scaleY,
   }) {
-    final displayText = _editedTextById[layer.id] ?? _layerDisplayText(layer);
+    final editedText = _editedTextById[layer.id];
+    if (_renderMode == _defaultRenderMode && (editedText == null || editedText.isEmpty)) {
+      return _buildTextHotspot(layer: layer, scaleX: scaleX, scaleY: scaleY);
+    }
+    final displayText = editedText ?? _layerDisplayText(layer);
     final left = (layer.x * scaleX).toDouble();
     final top = (layer.y * scaleY).toDouble();
     final width = (layer.width * scaleX).toDouble();
@@ -553,6 +573,24 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextHotspot({
+    required DesignLayerModel layer,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    return Positioned(
+      left: layer.x * scaleX,
+      top: layer.y * scaleY,
+      width: layer.width * scaleX,
+      height: layer.height * scaleY,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => _openTextEditor(layer),
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -1007,8 +1045,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     String? layerId,
   }) {
     final state = _photoStateByFrameId[frame.id];
-    final fallbackImageSource = layerId != null ? _resolveLayerImageSourceById(layerId) : null;
-    final hasPhoto = state != null || fallbackImageSource != null;
+    final hasPhoto = state != null;
     final isActive = _selectedFrameId == frame.id;
     if (layerId != null) {
       final layer = _findLayerById(layerId);
@@ -1016,7 +1053,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
         _debugPhotoVisual(
           layer: layer,
           selectedUserImageUrl: state != null ? 'memory-bytes' : null,
-          finalSource: state != null ? 'memory-bytes' : fallbackImageSource,
+          finalSource: state != null ? 'memory-bytes' : null,
         );
       }
     }
@@ -1061,7 +1098,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 decoration: BoxDecoration(
                   borderRadius: radius,
                   border: Border.all(
-                    color: isActive ? Colors.blue : Colors.white70,
+                    color: isActive ? Colors.blue : Colors.transparent,
                     width: isActive ? 2 : 1,
                   ),
                   boxShadow: isActive
@@ -1075,26 +1112,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: radius,
-                  child: hasPhoto
-                      ? (state != null
-                          ? _buildCroppedPhoto(state)
-                          : _buildTemplateImage(fallbackImageSource!))
-                      : Container(
-                          color: Colors.black.withOpacity(0.06),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add_a_photo_outlined, color: Colors.black.withOpacity(0.45)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  frame.placeholder,
-                                  style: TextStyle(fontSize: 11, color: Colors.black.withOpacity(0.55)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                  child: hasPhoto ? _buildCroppedPhoto(state!) : const SizedBox.shrink(),
                 ),
               ),
             ),

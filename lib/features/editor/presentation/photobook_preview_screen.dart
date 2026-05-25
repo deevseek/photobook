@@ -25,13 +25,13 @@ class PhotobookPreviewScreen extends StatelessWidget {
 
 
   Widget _buildPageBackground(DesignPageModel page) {
-    final selectedUrl = page.cleanBackgroundUrl?.isNotEmpty == true
-        ? page.cleanBackgroundUrl
-        : page.editorBackgroundUrl?.isNotEmpty == true
-            ? page.editorBackgroundUrl
-            : page.backgroundUrl?.isNotEmpty == true
-                ? page.backgroundUrl
-                : page.previewUrl;
+    final selectedUrl = page.previewUrl?.isNotEmpty == true
+        ? page.previewUrl
+        : page.backgroundUrl?.isNotEmpty == true
+            ? page.backgroundUrl
+            : page.editorBackgroundUrl?.isNotEmpty == true
+                ? page.editorBackgroundUrl
+                : page.cleanBackgroundUrl;
 
     if (selectedUrl == null || selectedUrl.isEmpty) {
       return Container(color: Colors.white);
@@ -39,7 +39,7 @@ class PhotobookPreviewScreen extends StatelessWidget {
 
     return Image.network(
       selectedUrl,
-      fit: BoxFit.fill,
+      fit: BoxFit.contain,
       errorBuilder: (_, __, ___) => Container(color: Colors.white),
     );
   }
@@ -158,18 +158,18 @@ class _PreviewPageCanvas extends StatelessWidget {
     String? selectedUrl;
     String selectedSource = 'none';
 
-    if ((page.cleanBackgroundUrl ?? '').isNotEmpty) {
-      selectedUrl = page.cleanBackgroundUrl;
-      selectedSource = 'clean_background_url';
-    } else if ((page.editorBackgroundUrl ?? '').isNotEmpty) {
-      selectedUrl = page.editorBackgroundUrl;
-      selectedSource = 'editor_background_url';
+    if ((page.previewUrl ?? '').isNotEmpty) {
+      selectedUrl = page.previewUrl;
+      selectedSource = 'preview_url';
     } else if ((page.backgroundUrl ?? '').isNotEmpty) {
       selectedUrl = page.backgroundUrl;
       selectedSource = 'background_url';
-    } else if ((page.previewUrl ?? '').isNotEmpty) {
-      selectedUrl = page.previewUrl;
-      selectedSource = 'preview_url';
+    } else if ((page.editorBackgroundUrl ?? '').isNotEmpty) {
+      selectedUrl = page.editorBackgroundUrl;
+      selectedSource = 'editor_background_url';
+    } else if ((page.cleanBackgroundUrl ?? '').isNotEmpty) {
+      selectedUrl = page.cleanBackgroundUrl;
+      selectedSource = 'clean_background_url';
     } else {
       final dynamic pageDynamic = page;
       if (pageDynamic is Map) {
@@ -208,7 +208,7 @@ class _PreviewPageCanvas extends StatelessWidget {
 
     return Image.network(
       selectedUrl!,
-      fit: BoxFit.fill,
+      fit: BoxFit.contain,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.white,
         alignment: Alignment.center,
@@ -318,67 +318,9 @@ class _PreviewPageCanvas extends StatelessWidget {
                 children: [
                 Positioned.fill(child: _buildPageBackground(page)),
                 ...sortedLayers.map((layer) {
-                  if (layer.type == 'shape') {
-                    if (layer.width <= 0 || layer.height <= 0) return const SizedBox.shrink();
-                    final fillColor =
-                        parseHexColor(
-                          layer.fillColor ??
-                              layer.backgroundColor ??
-                              layer.color ??
-                              layer.meta['final_fill_color'] ??
-                              layer.meta['fill_color'],
-                        ) ??
-                        Colors.transparent;
-                    debugPrint(
-                      'SHAPE RENDER id=${layer.id} fill_color=${layer.meta['fill_color'] ?? layer.fillColor} backgroundColor=${layer.backgroundColor} color=${layer.color} resolvedFillColor=$fillColor opacity=${layer.opacity}',
-                    );
-                    return Positioned(
-                      left: layer.x * scaleX,
-                      top: layer.y * scaleY,
-                      width: layer.width * scaleX,
-                      height: layer.height * scaleY,
-                      child: Opacity(opacity: layer.opacity.clamp(0.0, 1.0), child: ColoredBox(color: fillColor)),
-                    );
-                  }
-                  if (layer.type == 'line') {
-                    if (layer.width <= 0 || layer.height <= 0) return const SizedBox.shrink();
-                    final strokeWidthRaw = layer.strokeWidth > 0
-                        ? layer.strokeWidth
-                        : (layer.meta['stroke_width'] is num ? (layer.meta['stroke_width'] as num).toDouble() : 1.0);
-                    final strokeColor =
-                        parseHexColor(
-                          layer.strokeColor ??
-                              layer.color ??
-                              layer.meta['final_stroke_color'] ??
-                              layer.meta['stroke_color'],
-                        ) ??
-                        const Color(0xFF000000);
-                    final isHorizontal = layer.width >= layer.height;
-                    final strokeWidth = (strokeWidthRaw * math.min(scaleX, scaleY)).clamp(1.0, 9999.0);
-                    debugPrint(
-                      'LINE RENDER id=${layer.id} stroke_color=${layer.meta['stroke_color'] ?? layer.strokeColor} color=${layer.color} stroke_width=$strokeWidthRaw resolvedStrokeColor=$strokeColor x=${layer.x} y=${layer.y} width=${layer.width} height=${layer.height}',
-                    );
-                    return Positioned(
-                      left: layer.x * scaleX,
-                      top: layer.y * scaleY,
-                      child: Opacity(
-                        opacity: layer.opacity.clamp(0.0, 1.0),
-                        child: Container(
-                          width: isHorizontal ? layer.width * scaleX : strokeWidth,
-                          height: isHorizontal ? strokeWidth : layer.height * scaleY,
-                          color: strokeColor,
-                        ),
-                      ),
-                    );
-                  }
-                  if (!(layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame')) {
-                    if (layer.type != 'text') return const SizedBox.shrink();
-                  }
                   if (layer.type == 'text') {
-                    final displayText = editedTextById[layer.id] ?? _layerDisplayText(layer);
-                    debugPrint(
-                      'TEXT VISUAL id=${layer.id} content=$displayText x=${layer.x} y=${layer.y} w=${layer.width} h=${layer.height}',
-                    );
+                    final edited = editedTextById[layer.id];
+                    if (edited == null || edited.isEmpty) return const SizedBox.shrink();
                     return Positioned(
                       left: layer.x * scaleX,
                       top: layer.y * scaleY,
@@ -391,7 +333,7 @@ class _PreviewPageCanvas extends StatelessWidget {
                             angle: layer.rotation * math.pi / 180,
                             alignment: Alignment.topLeft,
                             child: Text(
-                              displayText,
+                              edited,
                               textAlign: _parseTextAlign(layer.textAlign),
                               style: _textStyleFromLayer(layer, scaleY),
                               maxLines: null,
@@ -403,9 +345,15 @@ class _PreviewPageCanvas extends StatelessWidget {
                       ),
                     );
                   }
+
+                  if (!(layer.type == 'photo' || layer.type == 'image' || layer.type == 'frame')) {
+                    return const SizedBox.shrink();
+                  }
+
                   if (layer.frame == null) return const SizedBox.shrink();
                   final frame = layer.frame!;
                   final state = photoStateByFrameId[frame.id];
+                  if (state == null) return const SizedBox.shrink();
 
                   return Positioned(
                     left: frame.x * scaleX,
@@ -413,39 +361,21 @@ class _PreviewPageCanvas extends StatelessWidget {
                     width: frame.width * scaleX,
                     height: frame.height * scaleY,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        frame.borderRadius * scaleX,
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (state != null)
-                            Transform.translate(
-                              offset: Offset(
-                                state.offset.dx * scaleX,
-                                state.offset.dy * scaleY,
-                              ),
-                              child: Transform.scale(
-                                scale: state.scale,
-                                child: Transform.rotate(
-                                  angle: state.rotation * math.pi / 180,
-                                  child: Image.memory(
-                                    state.imageBytes,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                  ),
-                                ),
-                              ),
+                      borderRadius: BorderRadius.circular(frame.borderRadius * scaleX),
+                      child: Transform.translate(
+                        offset: Offset(state.offset.dx * scaleX, state.offset.dy * scaleY),
+                        child: Transform.scale(
+                          scale: state.scale,
+                          child: Transform.rotate(
+                            angle: state.rotation * math.pi / 180,
+                            child: Image.memory(
+                              state.imageBytes,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
                             ),
-                          if (state == null)
-                            Container(
-                              color: Colors.black.withOpacity(0.06),
-                              child: Center(
-                                child: Icon(Icons.add_a_photo_outlined, color: Colors.black.withOpacity(0.45)),
-                              ),
-                            ),
-                        ],
+                          ),
+                        ),
                       ),
                     ),
                   );
