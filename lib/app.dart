@@ -22,7 +22,7 @@ class PhotoBookApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: MaterialApp(
-        title: 'PhotoBook Profesional Servis',
+        title: 'Kinesti Photobook',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         initialRoute: AppRoutes.splash,
