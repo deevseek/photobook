@@ -9,6 +9,7 @@ class AppRoutes {
   static const designDetail = '/designs/detail';
   static const photobookEditor = '/editor';
   static const checkoutPlaceholder = '/checkout';
+  static const orderSuccess = '/order-success';
   static const orders = '/orders';
   static const profile = '/profile';
   static const orderDetail = '/orders/detail';

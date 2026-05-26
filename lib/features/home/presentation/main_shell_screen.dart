@@ -21,18 +21,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: pages[index],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.products),
-        label: const Text('Pilih Produk Dulu'),
-        icon: const Icon(Icons.auto_awesome),
-      ),
-      bottomNavigationBar: NavigationBar(
+            bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: (v) => setState(() => index = v),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: 'Produk'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Pesanan'),
+          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Beranda'),
+          NavigationDestination(icon: Icon(Icons.folder_outlined), label: 'Proyek'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), label: 'Keranjang'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profil'),
         ],
       ),

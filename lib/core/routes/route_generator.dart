@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/checkout/presentation/checkout_placeholder_screen.dart';
+import '../../features/checkout/presentation/order_success_screen.dart';
 import '../../features/designs/presentation/design_detail_screen.dart';
 import '../../features/designs/presentation/design_list_screen.dart';
 import '../../features/editor/presentation/photobook_editor_screen.dart';
@@ -52,6 +53,9 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => PhotobookEditorScreen(productId: productId, design: design));
       case AppRoutes.checkoutPlaceholder:
         return MaterialPageRoute(builder: (_) => const CheckoutPlaceholderScreen());
+      case AppRoutes.orderSuccess:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        return MaterialPageRoute(builder: (_) => OrderSuccessScreen(orderId: args['orderId']?.toString() ?? '-', productName: args['productName']?.toString() ?? '-', designName: args['designName']?.toString() ?? '-', pages: args['pages']?.toString() ?? '-', subtotal: args['subtotal']?.toString() ?? '-'));
       case AppRoutes.orders:
         return MaterialPageRoute(builder: (_) => const OrdersScreen());
       case AppRoutes.profile:
