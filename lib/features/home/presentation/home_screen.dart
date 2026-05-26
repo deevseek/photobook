@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/app_brand.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/state/view_state.dart';
 import '../../../core/widgets/common_widgets.dart';
@@ -14,13 +15,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth=context.watch<AuthProvider>();
     return Scaffold(
       backgroundColor: const Color(0xFFF6FAFC),
-      appBar: PhotobookAppBar(title: 'PhotoBook', actions:[IconButton(onPressed: (){}, icon: const Icon(Icons.notifications_none_rounded))]),
+      appBar: PhotobookAppBar(title: AppBrand.name, actions:[IconButton(onPressed: (){}, icon: const Icon(Icons.notifications_none_rounded))]),
       body: Consumer<ProductProvider>(builder: (_,p,__){
         if(p.status==ViewStatus.loading) return const LoadingState();
         if(p.status==ViewStatus.error) return ErrorState(message:p.error??'Gagal memuat produk', onRetry:p.fetchProducts);
         return ListView(padding: const EdgeInsets.all(16), children:[
           Text('Halo, ${auth.user?.name ?? 'Customer'}', style: const TextStyle(fontSize: 16, color: Colors.black54)),
-          const Text('PhotoBook', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+          const Text(AppBrand.name, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Card(child:Padding(padding:const EdgeInsets.all(16), child:Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Abadikan Momen Indahmu', style:TextStyle(fontWeight:FontWeight.w700,fontSize:18)), SizedBox(height:10)])), Expanded(child:PrimaryButton(label:'Buat Photobook Baru', onPressed: ()=>Navigator.pushNamed(context, AppRoutes.products), icon: Icons.add_photo_alternate_outlined))]))),
           const SizedBox(height: 16),

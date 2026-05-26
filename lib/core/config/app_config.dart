@@ -10,7 +10,7 @@ class AppConfig {
 
   static const Map<String, dynamic> devCustomer = {
     'id': 1,
-    'name': 'Test Customer PhotoBook',
+    'name': 'Test Customer',
     'email': 'photobook-test@example.com',
     'avatar': null,
     'phone': '081234567890',

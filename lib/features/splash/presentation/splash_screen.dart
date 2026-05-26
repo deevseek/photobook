@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/constants/app_brand.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -89,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     child: const Center(
                       child: Text(
-                        'Kinesti Photobook',
+                        AppBrand.name,
                         style: TextStyle(
                           color: Color(0xFFFFF7E6),
                           fontSize: 26,
