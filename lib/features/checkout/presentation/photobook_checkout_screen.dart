@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/routes/app_routes.dart';
 import '../../../data/models/design_schema_model.dart';
 import '../../../data/models/photobook_design_model.dart';
 import '../../../data/models/photobook_product_model.dart';
@@ -319,7 +320,14 @@ class _PhotobookCheckoutScreenState extends State<PhotobookCheckoutScreen> {
       final updatedOrder = await _pollPaidStatus(order.orderNumber);
       if (!mounted) return;
       if (updatedOrder != null && updatedOrder.paymentStatus.toLowerCase() == 'paid') {
-        _showSnackbar('Pembayaran terkonfirmasi. Pesanan masuk proses produksi.');
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, AppRoutes.orderSuccess, arguments: {
+          'orderId': updatedOrder.orderNumber,
+          'productName': product.name,
+          'designName': widget.design.title,
+          'pages': pageCount,
+          'subtotal': _idr(grandTotal),
+        });
       } else {
         _showSnackbar('Pembayaran belum terkonfirmasi. Silakan cek detail pesanan atau coba lagi beberapa saat.');
       }

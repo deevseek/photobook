@@ -3,482 +3,77 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'app_network_image.dart';
 
-class AppButton extends StatelessWidget {
+class PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
-
-  const AppButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.icon,
-  });
+  const PrimaryButton({super.key, required this.label, this.onPressed, this.icon});
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon ?? Icons.arrow_forward_rounded),
-      label: Text(label),
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon ?? Icons.arrow_forward_rounded),
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF168CA0),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
     );
   }
 }
 
-class SectionHeader extends StatelessWidget {
+class PhotobookAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  final String? actionText;
-  final VoidCallback? onTap;
-
-  const SectionHeader({
-    super.key,
-    required this.title,
-    this.actionText,
-    this.onTap,
-  });
-
+  final List<Widget>? actions;
+  final bool centerTitle;
+  const PhotobookAppBar({super.key, required this.title, this.actions, this.centerTitle = false});
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        if (actionText != null)
-          TextButton(
-            onPressed: onTap,
-            child: Text(actionText!),
-          ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => AppBar(title: Text(title), actions: actions, centerTitle: centerTitle);
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
+
+class LoadingState extends StatelessWidget { const LoadingState({super.key}); @override Widget build(BuildContext context)=>const Center(child:CircularProgressIndicator()); }
+class EmptyState extends StatelessWidget { final String title; final String subtitle; const EmptyState({super.key, required this.title, required this.subtitle}); @override Widget build(BuildContext context)=>Center(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[const Icon(Icons.photo_album_outlined,size:48,color:Colors.grey),const SizedBox(height:12),Text(title,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:18)),const SizedBox(height:6),Text(subtitle,textAlign:TextAlign.center,style:TextStyle(color:Colors.grey.shade600))]))); }
+class ErrorState extends StatelessWidget { final String message; final VoidCallback? onRetry; const ErrorState({super.key, required this.message, this.onRetry}); @override Widget build(BuildContext context)=>Center(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[const Icon(Icons.error_outline,size:48,color:Colors.redAccent),const SizedBox(height:12),Text(message,textAlign:TextAlign.center),const SizedBox(height:10),if(onRetry!=null) OutlinedButton(onPressed:onRetry, child:const Text('Coba Lagi'))]))); }
 
 class ProductCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final num price;
-  final String? imageUrl;
-  final VoidCallback? onTap;
-
-  const ProductCard({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.price,
-    this.imageUrl,
-    this.onTap,
-  });
-
+  final String title; final String subtitle; final num price; final String? imageUrl; final VoidCallback? onTap;
+  const ProductCard({super.key, required this.title, required this.subtitle, required this.price, this.imageUrl, this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      elevation: 0,
+  Widget build(BuildContext context) => Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              _ImageBox(imageUrl: imageUrl, size: 72),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    PriceText(
-                      price: price,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class DesignCard extends StatelessWidget {
-  final String name;
-  final String? thumbnailUrl;
-  final VoidCallback? onTap;
-
-  const DesignCard({
-    super.key,
-    required this.name,
-    this.thumbnailUrl,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      elevation: 0,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _ImageBox(imageUrl: thumbnailUrl, height: 150, width: double.infinity),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class OrderCard extends StatelessWidget {
-  final String orderNo;
-  final String status;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const OrderCard({
-    super.key,
-    required this.orderNo,
-    required this.status,
-    required this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.receipt_long_outlined, color: color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  orderNo,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                ),
-              ),
-              StatusBadge(text: status, color: color),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ImageBox extends StatelessWidget {
-  final String? imageUrl;
-  final double? width;
-  final double? height;
-  final double size;
-
-  const _ImageBox({
-    this.imageUrl,
-    this.width,
-    this.height,
-    this.size = 72,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final boxWidth = width ?? size;
-    final boxHeight = height ?? size;
-
-    if (imageUrl == null || imageUrl!.isEmpty) {
-      return _ImageFallback(width: boxWidth, height: boxHeight);
-    }
-
-    return AppNetworkImage(
-      url: imageUrl,
-      width: boxWidth,
-      height: boxHeight,
-      fit: BoxFit.cover,
-      borderRadius: BorderRadius.circular(14),
-    );
-  }
-}
-
-class _ImageFallback extends StatelessWidget {
-  final double? width;
-  final double? height;
-
-  const _ImageFallback({
-    this.width,
-    this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: AppColors.lightGrey,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: const Center(
-        child: Icon(Icons.image_outlined, color: Colors.grey),
-      ),
-    );
-  }
-}
-
-class StatusBadge extends StatelessWidget {
-  final String text;
-  final Color color;
-
-  const StatusBadge({
-    super.key,
-    required this.text,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class PriceText extends StatelessWidget {
-  final num price;
-  final TextStyle? style;
-
-  const PriceText({
-    super.key,
-    required this.price,
-    this.style,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final value = price.round();
-
-    return Text(
-      'Rp ${_formatRupiah(value)}',
-      style: style ??
-          const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.navy,
-          ),
-    );
-  }
-
-  String _formatRupiah(int value) {
-    final text = value.toString();
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < text.length; i++) {
-      final reverseIndex = text.length - i;
-      buffer.write(text[i]);
-
-      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-        buffer.write('.');
-      }
-    }
-
-    return buffer.toString();
-  }
-}
-
-class NetworkImageFallback extends StatelessWidget {
-  final String? imageUrl;
-  final double? width;
-  final double? height;
-  final BoxFit fit;
-
-  const NetworkImageFallback({
-    super.key,
-    this.imageUrl,
-    this.width,
-    this.height,
-    this.fit = BoxFit.cover,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
-    if (!hasImage) return _fallback();
-    return AppNetworkImage(
-      url: imageUrl,
-      width: width,
-      height: height,
-      fit: fit,
-      borderRadius: BorderRadius.zero,
-    );
-  }
-
-  Widget _fallback() {
-    return Container(
-      width: width,
-      height: height,
-      color: AppColors.softGray,
-      child: const Icon(Icons.image_outlined, size: 36, color: Colors.grey),
-    );
-  }
-}
-
-class EmptyState extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const EmptyState({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.inbox_rounded, size: 72),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ClipRRect(borderRadius: BorderRadius.circular(16), child: SizedBox(height: 170, width: double.infinity, child: _Photo(url: imageUrl))),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
             const SizedBox(height: 4),
-            Text(subtitle, textAlign: TextAlign.center),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 12),
-              AppButton(
-                label: actionLabel!,
-                onPressed: onAction,
-                icon: Icons.refresh_rounded,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class LoadingState extends StatelessWidget {
-  const LoadingState({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
-  }
-}
-
-class ErrorState extends StatelessWidget {
-  final String message;
-  final VoidCallback? onRetry;
-
-  const ErrorState({super.key, required this.message, this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
+            Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-            if (onRetry != null) ...[
-              const SizedBox(height: 12),
-              AppButton(
-                label: 'Coba Lagi',
-                onPressed: onRetry,
-                icon: Icons.refresh_rounded,
-              ),
-            ],
-          ],
+            PriceText(price: price),
+          ]),
         ),
-      ),
-    );
-  }
+      ));
 }
+
+class DesignCard extends StatelessWidget { final String name; final String? thumbnailUrl; final VoidCallback? onTap; const DesignCard({super.key, required this.name, this.thumbnailUrl, this.onTap}); @override Widget build(BuildContext context)=>ProductCard(title:name, subtitle:'Template desain', price:0, imageUrl:thumbnailUrl, onTap:onTap); }
+class CheckoutSectionCard extends StatelessWidget { final String title; final Widget child; const CheckoutSectionCard({super.key, required this.title, required this.child}); @override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(16), child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:16)), const SizedBox(height:12), child]))); }
+class PriceBreakdownCard extends StatelessWidget { final List<Widget> rows; const PriceBreakdownCard({super.key, required this.rows}); @override Widget build(BuildContext context)=>CheckoutSectionCard(title:'Rincian Pembayaran', child:Column(children:rows)); }
+
+class PriceText extends StatelessWidget { final num price; final TextStyle? style; const PriceText({super.key, required this.price, this.style}); @override Widget build(BuildContext context)=>Text('Mulai Rp ${price.toStringAsFixed(0)}', style: style ?? const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)); }
+class AppButton extends PrimaryButton { const AppButton({super.key, required super.label, required super.onPressed, super.icon}); }
+class SectionHeader extends StatelessWidget { final String title; final String? actionText; final VoidCallback? onTap; const SectionHeader({super.key, required this.title, this.actionText, this.onTap}); @override Widget build(BuildContext context)=>Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:18)),if(actionText!=null) TextButton(onPressed:onTap, child:Text(actionText!))]); }
+
+class _Photo extends StatelessWidget { final String? url; const _Photo({this.url}); @override Widget build(BuildContext context)=> (url==null||url!.isEmpty)? Container(color:AppColors.lightGrey, child:const Icon(Icons.photo,size:36,color:Colors.grey)):AppNetworkImage(url:url, fit:BoxFit.cover); }
