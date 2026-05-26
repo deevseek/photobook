@@ -53,9 +53,9 @@ class _DesignListScreenState extends State<DesignListScreen> {
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.54,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
+              mainAxisExtent: 410,
             ),
             itemCount: items.length,
             itemBuilder: (_, i) => _DesignCard(design: items[i], productId: widget.productId),
@@ -72,27 +72,29 @@ class _DesignCard extends StatelessWidget {
   final PhotobookDesignModel design;
   final int productId;
 
-  Future<void> _handleTap(BuildContext context) async {
-    if (!design.designSchemaAvailable) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Template belum siap'),
-          content: const Text(
-            'Desain ini sudah memiliki file IDML, tetapi belum memiliki design schema untuk editor. Silakan generate schema di dashboard admin/desainer terlebih dahulu.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+  Future<void> _selectDesign(BuildContext context) async {
+    debugPrint('BUTTON PILIH DESAIN CLICKED designId=${design.id}');
+    debugPrint('Pilih desain tapped: ${design.id} - ${design.title}');
+
+    if (design.id <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Desain tidak valid')),
       );
       return;
     }
 
-    Navigator.pushNamed(context, AppRoutes.designDetail, arguments: {'designId': design.id, 'productId': productId});
+    if (!design.designSchemaAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Template belum siap digunakan. Silakan pilih desain lain.')),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      AppRoutes.designDetail,
+      arguments: {'designId': design.id, 'productId': productId, 'design': design},
+    );
   }
 
   @override
@@ -126,10 +128,20 @@ class _DesignCard extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            AppButton(
-              label: design.designSchemaAvailable ? 'Pilih Desain' : 'Template belum siap digunakan',
-              onPressed: () => _handleTap(context),
-              icon: design.designSchemaAvailable ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF168CA0),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () => _selectDesign(context),
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text('Pilih Desain'),
+              ),
             ),
             if (kDebugMode && !design.designSchemaAvailable)
               const Padding(
