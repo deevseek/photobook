@@ -74,6 +74,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   final Map<String, String> _savedTextById = {};
   String _inlineDraftText = '';
   String _renderMode = _defaultRenderMode;
+  bool _bookViewEnabled = true;
 
   bool _loading = true;
   String? _error;
@@ -160,6 +161,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F6FA),
       appBar: AppBar(
         title: Text(widget.design.title),
         actions: [
@@ -179,10 +181,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: _buildBody(context),
-      ),
+      body: SafeArea(child: Padding(padding: const EdgeInsets.all(12), child: _buildBody(context))),
     );
   }
 
@@ -193,6 +192,11 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
       return const Center(
         child: Text('Template tidak memiliki halaman'),
       );
+    }
+
+    final maxIndex = _bookViewEnabled ? _spreadItems(schema).length - 1 : schema.pages.length - 1;
+    if (_activePageIndex > maxIndex) {
+      _activePageIndex = 0;
     }
 
     return Column(
@@ -210,9 +214,20 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               'Background preview belum tersedia. Frame dan teks tetap bisa diedit.',
             ),
           ),
-        Expanded(
-          child: _buildCanvas(context, schema),
-        ),
+        if (MediaQuery.of(context).orientation == Orientation.portrait)
+          Align(
+            alignment: Alignment.centerRight,
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment<bool>(value: true, label: Text('Book View')),
+                ButtonSegment<bool>(value: false, label: Text('Single')),
+              ],
+              selected: {_bookViewEnabled},
+              onSelectionChanged: (s) => setState(() => _bookViewEnabled = s.first),
+            ),
+          ),
+        const SizedBox(height: 8),
+        Expanded(child: _buildCanvas(context, schema)),
         _buildInlineTextEditor(schema),
         const SizedBox(height: 8),
         _buildPageThumbnails(schema),
@@ -246,7 +261,55 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
   }
 
   Widget _buildCanvas(BuildContext context, DesignSchemaModel schema) {
-    final page = schema.pages[_activePageIndex];
+    if (_bookViewEnabled) {
+      final spread = _spreadItems(schema)[_activePageIndex];
+      return InteractiveViewer(
+        minScale: 0.8,
+        maxScale: 3.0,
+        child: _buildBookSpreadCanvas(
+          schema: schema,
+          leftPage: spread.leftPageIndex != null ? schema.pages[spread.leftPageIndex!] : null,
+          rightPage: spread.rightPageIndex != null ? schema.pages[spread.rightPageIndex!] : null,
+        ),
+      );
+    }
+    return _buildSinglePageCanvas(schema: schema, pageIndex: _activePageIndex);
+  }
+
+  Widget _buildBookSpreadCanvas({
+    required DesignSchemaModel schema,
+    required DesignPageModel? leftPage,
+    required DesignPageModel? rightPage,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 16, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Expanded(child: leftPage == null ? _emptyPagePlaceholder() : _buildSinglePageCanvas(schema: schema, pageIndex: schema.pages.indexOf(leftPage))),
+          Container(
+            width: 12,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0x22000000), Color(0x08000000), Color(0x22000000)]),
+            ),
+          ),
+          Expanded(child: rightPage == null ? _emptyPagePlaceholder() : _buildSinglePageCanvas(schema: schema, pageIndex: schema.pages.indexOf(rightPage))),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyPagePlaceholder() => Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE3E7ED))),
+      );
+
+  Widget _buildSinglePageCanvas({required DesignSchemaModel schema, required int pageIndex}) {
+    final page = schema.pages[pageIndex];
     final layers = page.layers;
     final indexedLayers = layers.indexed.toList()
       ..sort((a, b) {
@@ -316,7 +379,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
 
                     _logPageLayerStats(
                       page: page,
-                      pageIndex: _activePageIndex,
+                      pageIndex: pageIndex,
                       pageWidth: schemaWidth,
                       pageHeight: schemaHeight,
                       totalLayers: layers.length,
@@ -962,17 +1025,36 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
     );
   }
 
+  List<({int? leftPageIndex, int? rightPageIndex, String label})> _spreadItems(DesignSchemaModel schema) {
+    final items = <({int? leftPageIndex, int? rightPageIndex, String label})>[];
+    if (schema.pages.isEmpty) return items;
+    items.add((leftPageIndex: null, rightPageIndex: 0, label: 'Cover'));
+    for (int i = 1; i < schema.pages.length; i += 2) {
+      final left = i;
+      final right = i + 1 < schema.pages.length ? i + 1 : null;
+      final leftNumber = schema.pages[left].pageNumber;
+      final label = right == null ? 'Hal. $leftNumber' : 'Hal. $leftNumber-${schema.pages[right].pageNumber}';
+      items.add((leftPageIndex: left, rightPageIndex: right, label: label));
+    }
+    return items;
+  }
+
   Widget _buildPageThumbnails(DesignSchemaModel schema) {
+    final items = _bookViewEnabled
+        ? _spreadItems(schema)
+        : List.generate(schema.pages.length, (i) => (leftPageIndex: i, rightPageIndex: null, label: 'Hal. ${schema.pages[i].pageNumber}'));
     return SizedBox(
-      height: 72,
+      height: 82,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: schema.pages.length,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final page = schema.pages[index];
           final isActive = index == _activePageIndex;
+          final item = items[index];
+          final thumbPageIndex = item.rightPageIndex ?? item.leftPageIndex;
+          final page = thumbPageIndex == null ? null : schema.pages[thumbPageIndex];
 
           return InkWell(
             onTap: () {
@@ -985,24 +1067,22 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
               width: 90,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: isActive ? Colors.blue : Colors.grey.shade400,
+                  color: isActive ? const Color(0xFF168CA0) : Colors.grey.shade400,
                   width: isActive ? 2 : 1,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
               clipBehavior: Clip.antiAlias,
-              child: page.previewUrl != null && page.previewUrl!.isNotEmpty
+              child: page?.previewUrl != null && page!.previewUrl!.isNotEmpty
                   ? Image.network(
                       page.previewUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) {
-                        return Center(
-                          child: Text('Page ${page.pageNumber}'),
-                        );
+                        return Center(child: Text(item.label, textAlign: TextAlign.center));
                       },
                     )
                   : Center(
-                      child: Text('Page ${page.pageNumber}'),
+                      child: Text(item.label, textAlign: TextAlign.center),
                     ),
             ),
           );
@@ -1021,6 +1101,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: _openPreview,
+                style: OutlinedButton.styleFrom(shape: const StadiumBorder()),
                 child: const Text('Preview'),
               ),
             ),
@@ -1028,6 +1109,7 @@ class _PhotobookEditorScreenState extends State<PhotobookEditorScreen> {
             Expanded(
               child: ElevatedButton(
                 onPressed: _handleCheckout,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF168CA0), shape: const StadiumBorder()),
                 child: const Text('Lanjut Checkout'),
               ),
             ),
